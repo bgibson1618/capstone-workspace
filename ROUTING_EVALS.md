@@ -1,9 +1,11 @@
-# Routing Eval Set (seed) — Cookbook Memory router
+# Routing Eval Set — Cookbook Memory router
 
-**Status:** seed / design draft (Brent + Orchestrator, 2026-06-19). Lives in `capstone-workspace`
-during design; transcodes to a runnable JSON/JSONL fixture + a tiny runner in a **Brent-owned repo
-path** when we wire it. **Eval-first:** we design the router's rules *against these cases*, then
-implement `router.py`, then run.
+**Status:** active (2026-06-19). The router shipped, was hardened (blind adversarials, 58%→83%) and
+adjudicated (Bucket B), and the blind set is now a **durable committed fixture**:
+`eval/memeval/stores/tests/test_routing_evals.py` (reproduce from `eval/`:
+`python3 -m memeval.stores.tests.test_routing_evals` → 28/31 = 90%). This doc is the design /
+provenance record; the runnable source of truth is that committed fixture. **Eval-first**
+throughout: cases were written before the rules.
 
 ## What this measures
 Best-first **routing accuracy**: for a query, does `router.route(query)` pick the intended backend?

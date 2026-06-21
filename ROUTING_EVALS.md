@@ -1,11 +1,21 @@
 # Routing Eval Set — Cookbook Memory router
 
-**Status:** active (2026-06-19). The router shipped, was hardened (blind adversarials, 58%→83%) and
-adjudicated (Bucket B), and the blind set is now a **durable committed fixture**:
+**Status:** active (updated 2026-06-21). The router shipped, was hardened (blind adversarials, 58%→83%),
+adjudicated (Bucket B), and the blind set is a **durable committed fixture**:
 `eval/memeval/stores/tests/test_routing_evals.py` (reproduce from `eval/`:
-`python3 -m memeval.stores.tests.test_routing_evals` → 28/31 = 90%). This doc is the design /
-provenance record; the runnable source of truth is that committed fixture. **Eval-first**
-throughout: cases were written before the rules.
+`python3 -m memeval.stores.tests.test_routing_evals` → BLIND-hard **28/31 = 90%**). This doc is the design /
+provenance record; the **runnable source of truth is that committed fixture.** **Eval-first** throughout.
+
+> **2026-06-21 update — superseding the original sections below.** The eval has since GROWN past the
+> original 41-case blind set (D018, PR #28): a **blind multi-lens fan-out** (5 firewalled generators ×
+> distinct lenses — surface traps / ambiguity / messy phrasing / boundary / multilingual → synthesizer)
+> added a separate measured **`D018_CASES` pool (42 cases → fixture now 73 total)**, exposing the router's
+> **markdown over-routing bias**. Buckets: 13 AGREE · 9 GAP:cheap-fix · 3 GAP:needs-learning (multilingual)
+> · 17 contested(⚠). The **9 cheap-fix gaps were then fixed** by 7 narrow router rules (D018 cheap-fix,
+> PR #29) — speed profile **50%→73%** on the D018 set, golden 5→12, BLIND unchanged at 28/31.
+> **Still open:** the 3 multilingual `GAP:needs-learning` (→ PR3b-2 learned classifier) and the 17
+> contested labels (measured, awaiting a separate adjudication pass). The TODO list further down is the
+> ORIGINAL plan and is partly superseded by this — see DECISION_LOG **D018** for the authoritative state.
 
 ## What this measures
 Best-first **routing accuracy**: for a query, does `router.route(query)` pick the intended backend?

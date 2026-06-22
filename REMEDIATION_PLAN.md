@@ -64,12 +64,11 @@ retrievals."* Chosen sequence:
   CODEOWNERS sign-off). **Persistence trust policy** (retention/TTL/encryption — ADR-P9, storage owner).
 
 ## Status
-- 2026-06-21: audit run; write-path arc chosen + started.
-  - Step 1 WAL: **#52 MERGED**; enforcement follow-up **#55 OPEN** (CodeRabbit — raise if a file-backed
-    DB didn't get WAL).
-  - Step 2 write-routing: **#56 OPEN** (D023 — `route_write`, default `base_all`; round-trip 1.000 vs
+- 2026-06-21: audit run; write-path arc chosen + started. 2026-06-22: **all solo write-path PRs MERGED.**
+  - Step 1 WAL: **#52 + #55 MERGED** (pragma + CodeRabbit enforcement — raise if a file-backed DB didn't get WAL).
+  - Step 2 write-routing: **#56 MERGED** (D023 — `route_write`, default `base_all`; round-trip 1.000 vs
     selective 0.708; cross-vendor Codex gate PASS).
-  - Step 3a dedup-on-write: **#57 OPEN** (D024 — `Router.write`, default OFF: offline lexical dedup
+  - Step 3a dedup-on-write: **#57 MERGED** (D024 — `Router.write`, default OFF: offline lexical dedup
     can't separate near-dups from distinct-but-similar → false-merge = data loss; real-embedder-gated;
     Codex gate PASS).
   - Step 3b version-highest-wins: **DEFERRED — cross-team** (per-store vs dreaming-layer ownership, TEAM_NOTES#1).

@@ -100,7 +100,7 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
   cross-lingual recovered to rank 0.** The complete inverse of D019's lexical-fixture result — the
   embedder's value was real all along; D019's fixture hid it. Voyage's benefit is now demonstrated on
   an instrument whose cases are machine-proven beyond a lexical retriever. (Script: `work/voyage_semantic_eval_d020.py`.)
-- **PR3b-2 (`SemanticRouterClassifier`) — SHIPPED as PR #49 (OPEN, not yet merged)** (`router/pr3b2-semantic-classifier`):
+- **PR3b-2 (`SemanticRouterClassifier`) — MERGED as PR #49** (`router/pr3b2-semantic-classifier`):
   exemplar-NN learned classifier in `router.py` behind the existing seam (D016 accuracy profile) — embeds
   per-backend GENERIC exemplars + the query with an injected encoder (e.g. `VoyageEmbedder`), routes to the
   nearest region by cosine (margin + nearest-exemplar in `details`). No `[CONTRACT]` change; default/speed
@@ -130,13 +130,13 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
   (`REMEDIATION_PLAN.md`, 27 items / 7 high) found the read side solid but the write side underbuilt.
   Sequence (eval-first, each its own gated PR):
   - **Step 1 — WAL: DONE.** `SqliteVectorStore` opens with `PRAGMA journal_mode=WAL` (ADR-P2) — **#52
-    merged**; CodeRabbit enforcement follow-up **#55 open** (raise if a file-backed DB didn't get WAL).
-  - **Step 2 — write-routing (D023): SHIPPED as PR #56 (OPEN).** `Router.route_write(item)` (the router
+    merged**; CodeRabbit enforcement follow-up **#55 MERGED** (raise if a file-backed DB didn't get WAL).
+  - **Step 2 — write-routing (D023): MERGED as PR #56.** `Router.route_write(item)` (the router
     owns WHERE to STORE, D009); default `write_policy=base_all` chosen by a round-trip calibration
     (1.000 vs selective 0.708 — content/query classification diverge under the rule classifier). Offline
     eval; cross-vendor Codex gate PASS. `route_write` is the router side; the agent/MemoryFramework
     *calling* it is cross-team (Keith).
-  - **Step 3a — dedup-on-write (D024): SHIPPED as PR #57 (OPEN).** `Router.write(item) → WriteReceipt`
+  - **Step 3a — dedup-on-write (D024): MERGED as PR #57.** `Router.write(item) → WriteReceipt`
     (dedup-resolve → route_write → persist; newer-content-wins, version+1). **Default OFF** — D024
     calibration proved offline lexical similarity can't separate near-dups (0.35–0.75) from
     distinct-but-similar memories (0.21–0.82; a distinct "read 5s" vs "write 30s" scores 0.824 > every
@@ -163,8 +163,9 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
 - **THEN (menu):** **graph store (Neo4j + relational-retrieval accuracy) — SCOPED, see `GRAPH_STORE_SCOPE.md`**
   (eval-first: graph eval → in-memory typed/directional edge model → Neo4j as a proven no-op) — the solo thread
   to progress while integration is scheduled; real benchmarks (captained); 17 contested labels; perf-testing; closeout.
-- **Resume:** `main` @ current. Write-path arc: **#55 WAL-enforce, #56 write-routing, #57 dedup — OPEN**
-  (#52 WAL merged); solo work complete, **not yet LIVE.** **Next-session priorities: (1) ⭐ wire write-routing
+- **Resume:** `main` @ current (also merged since: #53 plugin-real eval mode, #54 ADR-019 "MEMORY_STORE is a
+  directory"). Write-path arc: **#52/#55/#56/#57 all MERGED** — solo write-path complete + in main, but
+  **NOT yet LIVE** (nothing calls `route_write`/`Router.write`). **Next-session priorities: (1) ⭐ wire write-routing
   live (the Keith integration — `remember()`/`MemoryFramework.write` → `Router.write`); (2) the GRAPH STORE
   thread, scoped + ready (`GRAPH_STORE_SCOPE.md`, start at Step 0 = the graph-retrieval eval) as the solo thread
   to progress meanwhile.** See `REMEDIATION_PLAN.md` for the full backlog.
@@ -177,7 +178,7 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
 - Env: `python3` + `uv` (no `python`/`pip` on PATH). The offline path is zero-dependency.
 
 ## What's next (see Active work above for the live build state + the single next task)
-1. **Routing + embedder slice (D008–D022)** — *COMPLETE & measured* (PR1 #17 → PR3b-1 #41 → semantic-retrieval eval #44 → PR3b-2 #49, all merged; D020 recall@5 0.000 → 1.000; D021/D022 semantic classifier bounded). **Write-path arc (re-opened, D023/D024)** — *SOLO WORK DONE*: WAL (#52 merged, #55 enforce open) → write-routing (#56 open, D023, default base_all) → dedup-on-write (#57 open, D024, default OFF/real-embedder-gated). **No solo build remains** — the gate is **cross-team integration with Keith** (`MemoryFramework` stubbed → write-routing/dedup built but NOT LIVE; also unblocks the headline metrics) + version-highest-wins ownership. See **Active work** + `REMEDIATION_PLAN.md`. Brent's domain.
+1. **Routing + embedder slice (D008–D022)** — *COMPLETE & measured* (PR1 #17 → PR3b-1 #41 → semantic-retrieval eval #44 → PR3b-2 #49, all merged; D020 recall@5 0.000 → 1.000; D021/D022 semantic classifier bounded). **Write-path arc (re-opened, D023/D024)** — *SOLO WORK DONE & MERGED*: WAL (#52/#55) → write-routing (#56, D023, default base_all) → dedup-on-write (#57, D024, default OFF/real-embedder-gated) — all in `main`. **No solo build remains** — the ⭐ priority is the **cross-team integration with Keith** (`MemoryFramework`/`remember()` stubbed → write-routing/dedup built but NOT LIVE; also unblocks the headline metrics) + version-highest-wins ownership. See **Active work** + `REMEDIATION_PLAN.md`. Brent's domain.
 2. **Captained eval runs** — SWE-ContextBench + ContextBench (Brent's), on **real embeddings** + his own API key. Needs the deferred env setup (uv venv + Voyage/bge + ANN index). Run via the repo's GitHub Actions **Benchmark run** workflow (`.github/workflows/benchmark.yml`) on Brent's own key (repo secret `ANTHROPIC_API_KEY_BGIBSON1618`; $10 default budget) — see `collaborate.html` / `plan.md`. **Optional** — the build doesn't depend on it.
 3. **router↔harness integration** — coordinate the seam with Keith's harness. The router exposes `route(query) -> MemoryStore`, `classify(query) -> backend-name`, and `explain(query)` (scores + margin); the seam is Keith's primary agent calling `route()` (per the if/where-how split: the agent decides *if* to retrieve, the router decides *where/how*). No owner/branch/acceptance defined yet — coordinate with Keith.
 4. **Team-coordination items** — see `TEAM_NOTES.md`: (a) version-invariant (`architecture.md` vs the stores), (b) `project-plan.md` overstates shipped production pieces.

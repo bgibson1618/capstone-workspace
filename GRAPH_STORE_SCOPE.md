@@ -4,6 +4,13 @@
 > actual code. This is the working plan to start the graph-store thread next session. Eval-first, same
 > discipline as D008/D019–D024. Brent sets final direction; adjust before building.
 
+> **STATUS (2026-06-22): Step 0 DONE — `test_graph_retrieval_evals.py` (PR #75, D029).** The graph-retrieval
+> eval ships as a **link-dependent headroom instrument**: a coined-token corpus + a link-stripped
+> DIFFERENTIAL (every case must behave differently with vs without links, 8/8) — after a first cut was
+> caught by the cross-vendor gate as lexical theater (stripping links changed nothing). 4 slices
+> (typed_direction / relation_disambiguation / multi_hop / untyped_fallback control); semantic_seed
+> deferred to the embedder-seed step. **Next = Step 1** (typed/directional edge model + reverse index).
+
 ## The core call (panel unanimous)
 **Relational-retrieval ACCURACY lives in the edge model + traversal — fully testable in-memory,
 zero-dependency. Neo4j is INFRASTRUCTURE, not accuracy; it ships LAST and its only job is to reproduce
@@ -69,7 +76,7 @@ real accuracy win is **captained-only** (D019/D020 lesson). Sequence below the C
   -timestamp, item_id)` (`graph_store.py:128`); Cypher vs Python float ordering can diverge.
 
 ## Ordered build plan (each its own eval-first, gated PR)
-0. **Instrument first** — `test_graph_retrieval_evals.py`, cloning the D008/D020 template (Case dataclass,
+0. **Instrument first — ✅ DONE (#75, D029).** `test_graph_retrieval_evals.py`, cloning the D008/D020 template (Case dataclass,
    slices, machine-asserted invariants, **blind multi-lens authorship → deterministic calibration** dropping
    floor-solved cases). Slices: `typed_direction`, `multi_hop`, `relation_disambiguation`, `untyped_fallback`
    (control), `semantic_seed` (headroom). Anti-theater: today's untyped/undirected graph MUST miss the

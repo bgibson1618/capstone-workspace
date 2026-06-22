@@ -13,9 +13,12 @@ provenance record; the **runnable source of truth is that committed fixture.** *
 > **markdown over-routing bias**. Buckets: 13 AGREE · 9 GAP:cheap-fix · 3 GAP:needs-learning (multilingual)
 > · 17 contested(⚠). The **9 cheap-fix gaps were then fixed** by 7 narrow router rules (D018 cheap-fix,
 > PR #29) — speed profile **50%→73%** on the D018 set, golden 5→12, BLIND unchanged at 28/31.
-> **Still open:** the 3 multilingual `GAP:needs-learning` (→ PR3b-2 learned classifier) and the 17
-> contested labels (measured, awaiting a separate adjudication pass). The TODO list further down is the
-> ORIGINAL plan and is partly superseded by this — see DECISION_LOG **D018** for the authoritative state.
+> **Still open:** the 3 multilingual `GAP:needs-learning` and the 17 contested labels (measured, awaiting a
+> separate adjudication pass). **Update (D021/D022):** the semantic exemplar classifier (PR3b-2, #49 merged)
+> was *measured* — it recovered 2/3 multilingual but regressed English (not eligible standalone), and the
+> rules→semantic hybrid was scoped out (the offline embedder can't separate the cases); multilingual routing
+> is deferred to the **learned north-star (D007)**, NOT gamed. The TODO list further down is the ORIGINAL plan,
+> largely superseded — see DECISION_LOG **D018/D021/D022** for the authoritative state.
 
 ## What this measures
 Best-first **routing accuracy**: for a query, does `router.route(query)` pick the intended backend?
@@ -89,6 +92,7 @@ The remaining 5 misses are NOT clean bugs:
 - [x] round 1 hardening done (blind adversarial, 58% → 83%) — see above
 - [x] Bucket B contested labels adjudicated (D012) and tested
 - [x] **durable runner committed** → `eval/memeval/stores/tests/test_routing_evals.py` (the 41 blind queries + a reproducible scorer; current router = **90% agreement on hard cases**, the 3 disagreements documented as adjudicated/known-limits). Reproduce: `cd eval && python3 -m memeval.stores.tests.test_routing_evals`
-- [ ] grow toward ~50 cases; harvest real retrieval queries from trajectories
-- [ ] transcode to a runnable JSONL fixture + a tiny eval runner in a Brent-owned repo path
+- [x] grow toward ~50 cases — SUPERSEDED: D018 grew the fixture to **73** cases (blind multi-lens fan-out)
+- [ ] harvest real retrieval queries from trajectories; transcode to a JSONL fixture (gated on the harness
+      integration — still open; the inline-tuple fixture is the source of truth meanwhile)
 - [ ] after first real runs: harvest real retrieval queries from trajectories, add them

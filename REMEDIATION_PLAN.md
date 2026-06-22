@@ -7,9 +7,11 @@
 > **write path** and **harness integration**. This file is the durable backlog; `/pickup` should treat
 > it as the active priority until archived.
 
-## ACTIVE ARC — the write path (eval-first, each its own gated PR)
+## WRITE-PATH ARC — ✅ COMPLETE & MERGED (was the active arc; now the live gate is the Keith integration above)
 Brent's directive: *"not done until the router is as accurate as we can make it on both writes and
-retrievals."* Chosen sequence:
+retrievals."* All three steps below shipped + merged (#52/#55 WAL, #56 write-routing, #57 dedup — see Status).
+They are built but **NOT LIVE** until the ⭐ Keith integration (top of this file) wires them onto the write
+path. Chosen sequence (historical, all done):
 1. **WAL quick-win** — `SqliteVectorStore` opens sqlite with no `PRAGMA journal_mode=WAL` (ADR-P2: WAL
    mandatory). Concurrency hazard once MCP writes + the Daydreamer share one `$MEMORY_STORE` file.
    Fully owned, ~1 line + a file-backed test. *(verified: sqlite_store.py connect, no pragma)*
@@ -49,8 +51,9 @@ retrievals."* Chosen sequence:
   graph), graph full-field round-trip. LOW (code correct; removes silent-regression exposure).
 - **Commit live results as artifacts** — D020 (recall@5 0→1.0) + D021 bake-off live numbers live only in
   throwaway `work/` scripts; commit a captioned results artifact for reproducible evidence. LOW.
-- **Doc-honesty (TEAM_NOTES#2)** — `project-plan.md` + `stores/__init__.py` overstate ANN/Neo4j as
-  shipped; mark them deferred-to-paid-path. LOW.
+- **Doc-honesty (TEAM_NOTES#2)** — `stores/__init__.py` overstated ANN/Neo4j as shipped → **FIXED in
+  PR #64** (rewritten to v1 reality + deferred seams). `project-plan.md` may still overstate (multi-owner
+  shared doc — coordinate with the team). LOW.
 
 ## CONFIRMED DEFERRALS (document; build only if the milestone requires)
 - **Graph store: Neo4j backend + relational-retrieval accuracy** — **SCOPED for next session, see

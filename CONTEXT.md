@@ -1,6 +1,6 @@
 # CONTEXT — Brent's slice of agent-memory-harness ("Cookbook Memory")
 
-> Front door for picking this up in a fresh session. Last updated 2026-06-19.
+> Front door for picking this up in a fresh session. Last updated 2026-06-22.
 
 ## What this is
 A 4-person team project: a model-agnostic **persistent memory harness** for long-running
@@ -23,7 +23,7 @@ backends) + `eval/memeval/router.py`. Teammates: Keith @kmazanec (harness/OpenCo
   (auto-loaded each session), NOT in this dir. Demo/info material made here may target **Nerdy**
   (tentative — not folded into any plan yet).
 
-## Current state: core build SHIPPED; routing+embedder slice COMPLETE & measured; WRITE-PATH ARC in progress (see Active work)
+## Current state: core build SHIPPED; routing+embedder slice + write-path arc COMPLETE & MERGED; Keith integration is the live gate (see Active work)
 The original four owned components are implemented, **stdlib-offline** (real paths behind lazy injection
 seams), **eval-first**, independently reviewed, and squash-merged to `main` (PRs **#5–#12**). Since then a
 larger extension arc (cascade meta-index, speed/accuracy profiles, eval growth, learned classifiers +
@@ -37,7 +37,7 @@ real embedder) has shipped PRs **#17, #23, #27, #28, #29, #34, #41** — current
 `main` is clean and synced; all tests green. An independent `/sanity` (Codex) pass was run and
 its findings remediated (durable eval committed, docs reconciled, team items captured below).
 
-## Active work: routing+embedder slice COMPLETE & measured; WRITE-PATH ARC in progress (updated 2026-06-21)
+## Active work: routing+embedder slice + write-path arc COMPLETE & MERGED; Keith integration = live gate (updated 2026-06-22)
 Building the D008 cascade + the speed/accuracy profile seam, eval-first, run as the **agent-roster
 orchestrator** (delegating to architect/implementer/verifier roster runs; see DECISION_LOG D008 +
 D016 for the ruled design, D017 for IRCoT scoped-out).
@@ -157,9 +157,12 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
 - **⭐ TOP PRIORITY (Brent's call) — WIRE WRITE-ROUTING LIVE (cross-team w/ Keith):** change the write path
   (`_Engine.remember` / the harness `MemoryFramework.write`) to call **`self._router.write(item)`** instead of
   writing only to markdown — so write-routing + dedup actually run, AND it unblocks the headline efficiency/
-  accuracy metrics on Brent's stores. The router side is done (`route_write`/`Router.write` + tests); the change
-  is small (one call site) but spans the plugin/harness layer → coordinate with Keith. Brent owns the seam +
-  an integration test; Keith owns the call-site/`MemoryFramework`. Also resolve version-highest-wins ownership.
+  accuracy metrics on Brent's stores. The router side is done (`route_write`/`Router.write` + tests). Scope is
+  bigger than one line: (a) the plugin debug-write `_Engine.remember` (`client.py:102`, one call site) → `Router.write`;
+  (b) the eval-harness `MemoryFramework.{write,get,search,all}` — currently ALL `NotImplementedError` stubs
+  (`eval/memeval/opencode/framework.py:60-77`) — implemented over Router+backends; (c) an end-to-end metric run
+  proving the headline efficiency/accuracy on Brent's stores. Brent owns the seam + an integration test; Keith
+  owns the plugin call-site + `MemoryFramework`. Also resolve version-highest-wins ownership.
 - **THEN (menu):** **graph store (Neo4j + relational-retrieval accuracy) — SCOPED, see `GRAPH_STORE_SCOPE.md`**
   (eval-first: graph eval → in-memory typed/directional edge model → Neo4j as a proven no-op) — the solo thread
   to progress while integration is scheduled; real benchmarks (captained); 17 contested labels; perf-testing; closeout.
@@ -172,7 +175,7 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
 
 ## How to verify (run from `~/projects/agent-memory-harness/eval`)
 - Smoke gate (the team's CI check): `python3 tests/test_smoke.py` → **82 passed / 0 failed / 1 skipped** as of 2026-06-21 (count grows as the team adds tests / optional deps resolve — the contract is 0 failed; was 67→71→73→82).
-- D008 retrieval/gate fixture: `python3 -m memeval.stores.tests.test_d008_evals` (report) · `... -m unittest ...` (now on `main`). Cascade tests: `test_d008_cascade`; profile matrix: `test_profile_matrix`; bake-off: `test_routing_bakeoff`; Voyage embedder: `test_embedders`; semantic retrieval (PR #44, on branch): `test_semantic_retrieval_evals` (report: divergence recall@5 0.000 / control 1.000).
+- D008 retrieval/gate fixture: `python3 -m memeval.stores.tests.test_d008_evals` (report) · `... -m unittest ...` (now on `main`). Cascade tests: `test_d008_cascade`; profile matrix: `test_profile_matrix`; bake-off: `test_routing_bakeoff`; Voyage embedder: `test_embedders`; semantic retrieval (PR #44, merged): `test_semantic_retrieval_evals` (report: divergence recall@5 0.000 / control 1.000); write-routing: `test_write_routing_evals`; dedup: `test_dedup_evals`.
 - Brent's suites: `python3 -m unittest memeval.stores.tests.test_markdown_store memeval.stores.tests.test_sqlite_store memeval.stores.tests.test_graph_store memeval.stores.tests.test_router memeval.stores.tests.test_routing_evals`
 - Reproduce the routing number: `python3 -m memeval.stores.tests.test_routing_evals` → **28/31 = 90%** agreement on the blind hard cases.
 - Env: `python3` + `uv` (no `python`/`pip` on PATH). The offline path is zero-dependency.

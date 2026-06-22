@@ -22,6 +22,16 @@ backends) + `eval/memeval/router.py`. Teammates: Keith @kmazanec (harness/OpenCo
   lives separately under `~/.claude/projects/-home-brent-gibson-projects-capstone-workspace/memory/`
   (auto-loaded each session), NOT in this dir. Demo/info material made here may target **Nerdy**
   (tentative — not folded into any plan yet).
+- **Vendored tooling — the `/kb` slash command (a PRIVATE FORK):** `.claude/commands/kb.md` is copied
+  from the shared repo (agent-memory-harness PR #71, Scott) so KB project-story entries can be drafted
+  here (in **storage** domain) without working in the project repo, then synced upstream. It hard-requires
+  `docs/adrs/README.md` (a LOCAL MIRROR of the project's ADR domain taxonomy — not canonical; the real
+  ADRs live in `~/projects/agent-memory-harness/docs/adrs/`). Run here, `/kb` sources from
+  CONTEXT/DECISION_LOG/commits and writes append-only to `.kb/KB-<domain>.md`. **Sync discipline (drift
+  points):** (1) re-copy `kb.md` if Scott updates upstream; (2) keep `docs/adrs/README.md`'s domain table
+  in sync with the project's (the four domains harness/storage/dreaming/eval — `/kb` STOPS if they drift);
+  (3) copy `.kb/` entries generated here into the project's `.kb/KB-storage.md` when ready to share. New
+  project slash commands appear only after a session restart (discovered at session start).
 
 ## Current state: core build SHIPPED; routing+embedder slice + write-path arc COMPLETE & MERGED; write-routing now LIVE in the eval pipeline (RouterStore #66, D025); remaining gate = Keith adopts the adapter at the plugin/framework sites (see Active work)
 The original four owned components are implemented, **stdlib-offline** (real paths behind lazy injection

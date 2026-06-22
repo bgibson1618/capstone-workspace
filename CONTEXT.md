@@ -33,7 +33,7 @@ backends) + `eval/memeval/router.py`. Teammates: Keith @kmazanec (harness/OpenCo
   (3) copy `.kb/` entries generated here into the project's `.kb/KB-storage.md` when ready to share. New
   project slash commands appear only after a session restart (discovered at session start).
 
-## Current state: core build SHIPPED; routing+embedder slice + write-path arc COMPLETE & MERGED; write-routing now LIVE in the eval pipeline (RouterStore #66, D025); remaining gate = Keith adopts the adapter at the plugin/framework sites (see Active work)
+## Current state: core build SHIPPED; routing+embedder slice + write-path arc COMPLETE & MERGED; routed writes runnable in the eval pipeline via RouterStore (#66, D025) when injected — NOT the default product path yet; remaining gate = Keith adopts the adapter at the plugin/framework sites (see Active work)
 The original four owned components are implemented, **stdlib-offline** (real paths behind lazy injection
 seams), **eval-first**, independently reviewed, and squash-merged to `main` (PRs **#5–#12**). Since then a
 larger extension arc (cascade meta-index, speed/accuracy profiles, eval growth, learned classifiers +
@@ -154,7 +154,7 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
     gate PASS. Mechanism built + validated; the eval machine-checks the overlap + demonstrates the danger.
   - **Step 3b — version-highest-wins: CROSS-TEAM (deferred).** Per-store vs dreaming-layer ownership is
     an open team question (TEAM_NOTES#1; Brent's lean: dreaming/persistence concern) — not a solo build.
-- **SOLO write-path work DONE** (WAL ✓ #52/#55, write-routing ✓ #56, dedup ✓ #57) + **RouterStore adapter ✓ #66 (D025)** — routed writes are now **LIVE in the eval pipeline** (the #63 native `store=` seam; `WriteReceipt` proves 3-backend fan-out). The remaining live-wiring is the plugin/`MemoryFramework` sites (Keith), now de-risked to "adopt the adapter."
+- **SOLO write-path work DONE** (WAL ✓ #52/#55, write-routing ✓ #56, dedup ✓ #57) + **RouterStore adapter ✓ #66 (D025, merged)** — routed writes **run in the eval pipeline WHEN INJECTED** (`store=RouterStore` into the #63 native seam; `WriteReceipt` proves 3-backend fan-out). This is *tested/injectable, NOT the default product write path* — the live plugin `_Engine.remember` + `MemoryFramework` still bypass it. Wiring those sites is the remaining Keith integration ("adopt the adapter").
 - **WHERE STORAGE ACTUALLY LIVES (the router holds NO path — it dispatches to backends built under `$MEMORY_STORE`):**
   the plugin engine (`plugin/cookbook_memory/core/client.py:69-80` `_Engine.__init__`) builds the 3 backends under
   `$MEMORY_STORE` (config.py:46; plugin hooks set it to **`${CLAUDE_PROJECT_DIR}/.cookbook-memory`**):
@@ -179,7 +179,7 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
 - **Resume:** shared `main` @ current (teammate PRs merged since: #60 dataset schema, **#61 PRD-compliance
   audit + ablation survey**, **#62 Docker removed / Claude Code CLI coding agent**, **#63 benchmark-native eval
   pipeline (5 benches)**, #64 stores docstring, #65 CC rationale). Write-path arc **#52/#55/#56/#57 MERGED**;
-  **RouterStore #66 (D025, OPEN)** makes routed writes **LIVE in the #63 eval pipeline** (solo — `store=RouterStore`).
+  **RouterStore #66 (D025, MERGED)** makes routed writes runnable in the #63 eval pipeline **when injected** (`store=RouterStore`) — tested/injectable, NOT the default product write path (plugin/`MemoryFramework` still bypass it).
   **Next-session priorities: (1) ⭐ Keith adopts RouterStore at the plugin `_Engine.remember` + `MemoryFramework`
   live sites + a captained large-benchmark metric run (real embedder); (2) the GRAPH STORE thread, scoped + ready
   (`GRAPH_STORE_SCOPE.md`, start at Step 0 = the graph-retrieval eval) as the solo thread to progress meanwhile.**

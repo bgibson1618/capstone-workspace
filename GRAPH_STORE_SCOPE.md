@@ -76,7 +76,7 @@ real accuracy win is **captained-only** (D019/D020 lesson). Sequence below the C
   -timestamp, item_id)` (`graph_store.py:128`); Cypher vs Python float ordering can diverge.
 
 ## Ordered build plan (each its own eval-first, gated PR)
-> **Step 1 — ✅ DONE (#81, D030):** typed/directional edge model (`relations.py` + `graph_store.py` reverse `_in` index + intent-driven traversal); the eval's discrimination slices flipped headroom→victory; back-compat via untyped=`relates_to`-generic. `query_intent` direction is a recall-safe best-effort heuristic (7 cross-vendor gate iterations). **Next:** Step 2 (multi_hop deeper/path traversal), embedder seeding (semantic_seed), Neo4j durability.
+> **Step 1 — ✅ DONE (#81, D030):** typed/directional edge model (`relations.py` + `graph_store.py` reverse `_in` index + intent-driven traversal); the eval's discrimination slices flipped headroom→victory; back-compat via untyped=`relates_to`-generic. `query_intent` direction is a recall-safe best-effort heuristic (7 cross-vendor gate iterations). **Step 1b (next, /sanity-flagged):** the store consumes typed `okf_links` but `okf.py` still discards anchors → real OKF links are untyped until `okf.py` captures the anchor relation (+ an OKF→GraphStore integration test). **Then:** multi_hop deeper/path traversal, embedder seeding (semantic_seed), Neo4j durability.
 
 0. **Instrument first — ✅ DONE (#75, D029).** `test_graph_retrieval_evals.py`, cloning the D008/D020 template (Case dataclass,
    slices, machine-asserted invariants, **blind multi-lens authorship → deterministic calibration** dropping

@@ -1,8 +1,15 @@
 # Storage & Retrieval Map — agent-memory-harness (Brent's P3: stores + router)
 
-> Where memory is **written** and **read** today. Verified against real code on
-> branch `router/fusion-profiles` of `/home/brent-gibson/projects/agent-memory-harness`.
-> Every node/edge carries a `file:line` citation. Read-only doc; no code changed.
+> ⚠️ **PARTIALLY SUPERSEDED (as of D030 — re-verify before relying on per-node status).** This map was
+> drawn earlier; since then: **RouterStore merged (#66)**, **reranker (#67)**, **fusion profile (#68)**,
+> **graph eval Step 0 (#75)**, **graph Step 1 typed/directional (#81)** all shipped. So the lines below
+> reading "RouterStore built-not-wired", "fusion in-flight", and "graph untyped/undirected" are STALE —
+> see DECISION_LOG **D025–D030** for current state. **Still accurate (the load-bearing point):** the LIVE
+> plugin write path (`_Engine.remember`) + `MemoryFramework` still **bypass RouterStore/Router.write** —
+> routed write-routing/dedup are not wired into the product path yet (the Keith integration). The
+> read/write data-flow shapes below remain a useful reference; the per-node "status" tags are dated.
+>
+> _(original header) Verified against real code on branch `router/fusion-profiles`; `file:line` citations._
 
 ## Legend
 

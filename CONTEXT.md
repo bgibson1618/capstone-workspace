@@ -149,11 +149,14 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
   `Router.write` yet** — write-routing + dedup are built but NOT LIVE, and the headline efficiency/
   accuracy metrics can't be measured on Brent's stores until integration lands. Brent owns the
   `route()`/`route_write()`/`Router.write` seam + an integration test; Keith owns wiring `MemoryFramework`.
-  **THEN (menu):** real benchmarks (captained); 17 contested labels; backend perf-testing; closeout.
+  **THEN (menu):** **graph store (Neo4j + relational-retrieval accuracy) — SCOPED for next session, see
+  `GRAPH_STORE_SCOPE.md`** (eval-first: graph-retrieval eval → in-memory typed/directional edge model →
+  Neo4j backend as a proven no-op; the accuracy win is the edge model, not the DB); real benchmarks
+  (captained); 17 contested labels; backend perf-testing; closeout.
 - **Resume:** `main` @ current. Write-path arc: **#55 WAL-enforce, #56 write-routing, #57 dedup — OPEN**
-  (#52 WAL merged). Solo write-path complete; not yet LIVE (integration pending). Pick up at the
-  **Keith integration** (make write-routing/dedup live + unblock metrics) or the **menu**; see
-  `REMEDIATION_PLAN.md` for the full backlog.
+  (#52 WAL merged). Solo write-path complete; not yet LIVE (integration pending). **Next session: the GRAPH
+  STORE thread is scoped + ready (`GRAPH_STORE_SCOPE.md`, start at Step 0 = the graph-retrieval eval)** while
+  Brent schedules the Keith integration. See `REMEDIATION_PLAN.md` for the full backlog.
 
 ## How to verify (run from `~/projects/agent-memory-harness/eval`)
 - Smoke gate (the team's CI check): `python3 tests/test_smoke.py` → **82 passed / 0 failed / 1 skipped** as of 2026-06-21 (count grows as the team adds tests / optional deps resolve — the contract is 0 failed; was 67→71→73→82).

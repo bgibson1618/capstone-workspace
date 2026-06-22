@@ -44,9 +44,11 @@ retrievals."* Chosen sequence:
   shipped; mark them deferred-to-paid-path. LOW.
 
 ## CONFIRMED DEFERRALS (document; build only if the milestone requires)
-- **Neo4j graph backend** (uri= seam never connects; D014). NOTE: infra, *not* automatic accuracy —
-  a more accurate graph needs a richer **typed/weighted edge model**, which Neo4j enables but doesn't
-  provide for free. MED if pursued.
+- **Graph store: Neo4j backend + relational-retrieval accuracy** — **SCOPED for next session, see
+  `GRAPH_STORE_SCOPE.md`** (design-panel, 2026-06-22). Accuracy = the typed/directional edge model
+  (testable in-memory, eval-first); Neo4j = infra behind the `uri=` seam, shipped last as a proven
+  no-op. Ordered plan: graph-retrieval eval (Step 0) → in-memory edge model (Step 1) → embedder seeding
+  → Neo4j backend (mock + captained parity). Steps 0/1 are the bankable offline win.
 - **ANN index** (HNSW/FAISS) — brute-force cosine v1 (D013). **Reranker** (Voyage/Cohere). **bge-m3**
   air-gapped fallback. **consult-2 / RRF** (Consult2Config declared, unused). **north-star** learned
   router (D007). **17 contested labels** adjudication. **Package extraction** (ADR-eval-001; needs

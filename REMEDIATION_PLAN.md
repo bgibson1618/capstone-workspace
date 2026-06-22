@@ -65,12 +65,13 @@ path. Chosen sequence (historical, all done):
     D028 captained):** a fusion profile (RRF + score-norm) ships **opt-in** via `Consult2Config`/
     `fusion_profile` (single-route stays the default). *Correction:* briefly mis-scoped as "single-best by
     design" — the router is a **speed↔accuracy spectrum**; fusion is a wanted config. **Captained verdict
-    (D028):** with a real embedder, vectors single-route DOMINATES (recall@5 1.000) and **fusion DILUTES it
-    (0.900) — fusion loses to single-route when one backend is strong**; `score` > `rrf` (0.900 vs 0.850).
-    → **The accuracy profile is real-embedder vectors single-route, NOT fusion.** Fusion is niche/opt-in
-    (complementary, comparably-strong backends only). **Still open (lower priority now):** the fusion→rerank
-    ("accuracy+") tier; named presets; a recency×relevancy knob — but the headline accuracy lever is wiring
-    the **real embedder** (paid path), not fusion. LOW.
+    (D028, PROVISIONAL — small fixtures):** with a real embedder, vectors single-route DOMINATES (recall@5
+    1.000) and fusion DILUTES it (0.900) on n=20/34-doc data; `score` > `rrf` (0.900 vs 0.850). Single-route
+    is the current default. **NOT a write-off (Brent's call):** the dilution is plausibly a small-dataset
+    artifact — **fusion STAYS in the comparison matrix, to be re-measured at full benchmark scale** (large
+    diverse workloads where no single backend dominates may favor it). **Still open:** re-run the matrix at
+    full benchmark scale (the real fusion verdict); the fusion→rerank ("accuracy+") tier; named presets; a
+    recency×relevancy knob. MED.
 - **Doc-honesty (TEAM_NOTES#2)** — `stores/__init__.py` overstated ANN/Neo4j as shipped → **FIXED in
   PR #64** (rewritten to v1 reality + deferred seams). `project-plan.md` may still overstate (multi-owner
   shared doc — coordinate with the team). LOW.

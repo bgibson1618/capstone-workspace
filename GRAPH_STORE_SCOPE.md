@@ -4,12 +4,15 @@
 > actual code. This is the working plan to start the graph-store thread next session. Eval-first, same
 > discipline as D008/D019–D024. Brent sets final direction; adjust before building.
 
-> **STATUS (2026-06-22): Step 0 DONE — `test_graph_retrieval_evals.py` (PR #75, D029).** The graph-retrieval
+> **STATUS: Graph Steps 0 (#75/D029), 1 (#81/D030), 1b (#84/D031) DONE.** Step 0 = `test_graph_retrieval_evals.py` — the graph-retrieval
 > eval ships as a **link-dependent headroom instrument**: a coined-token corpus + a link-stripped
 > DIFFERENTIAL (every case must behave differently with vs without links, 8/8) — after a first cut was
 > caught by the cross-vendor gate as lexical theater (stripping links changed nothing). 4 slices
 > (typed_direction / relation_disambiguation / multi_hop / untyped_fallback control); semantic_seed
-> deferred to the embedder-seed step. **Next = Step 1** (typed/directional edge model + reverse index).
+> deferred to the embedder-seed step. **Steps 1 (#81/D030) + 1b (#84/D031) now DONE** — typed/directional
+> edges + `okf.py` anchor-capture (real OKF `[depends on](x.md)` links typed end-to-end, always-tuple
+> `okf_links`; gated by `test_okf_to_graph.py`, 9 tests). **Next = multi_hop deeper/path traversal /
+> semantic_seed embedder seeding / Neo4j durability.**
 
 ## The core call (panel unanimous)
 **Relational-retrieval ACCURACY lives in the edge model + traversal — fully testable in-memory,
@@ -76,7 +79,7 @@ real accuracy win is **captained-only** (D019/D020 lesson). Sequence below the C
   -timestamp, item_id)` (`graph_store.py:128`); Cypher vs Python float ordering can diverge.
 
 ## Ordered build plan (each its own eval-first, gated PR)
-> **Step 1 — ✅ DONE (#81, D030):** typed/directional edge model (`relations.py` + `graph_store.py` reverse `_in` index + intent-driven traversal); the eval's discrimination slices flipped headroom→victory; back-compat via untyped=`relates_to`-generic. `query_intent` direction is a recall-safe best-effort heuristic (7 cross-vendor gate iterations). **Step 1b (next, /sanity-flagged):** the store consumes typed `okf_links` but `okf.py` still discards anchors → real OKF links are untyped until `okf.py` captures the anchor relation (+ an OKF→GraphStore integration test). **Then:** multi_hop deeper/path traversal, embedder seeding (semantic_seed), Neo4j durability.
+> **Step 1 — ✅ DONE (#81, D030):** typed/directional edge model (`relations.py` + `graph_store.py` reverse `_in` index + intent-driven traversal); the eval's discrimination slices flipped headroom→victory; back-compat via untyped=`relates_to`-generic. `query_intent` direction is a recall-safe best-effort heuristic (7 cross-vendor gate iterations). **Step 1b — ✅ DONE (#84, D031):** `okf.py` `_LINK_RE` now captures the link anchor and `doc_to_memory_item` emits `okf_links` as `(anchor, target)` tuples (always-tuple — `okf.py` stays a pure parser, no `stores/` import; the store classifies the anchor), so real OKF links are typed end-to-end. Gated by `test_okf_to_graph.py` (9 tests, parses real OKF markdown; link-stripped anti-theater differential; RED→GREEN). **Then:** multi_hop deeper/path traversal, embedder seeding (semantic_seed), Neo4j durability.
 
 0. **Instrument first — ✅ DONE (#75, D029).** `test_graph_retrieval_evals.py`, cloning the D008/D020 template (Case dataclass,
    slices, machine-asserted invariants, **blind multi-lens authorship → deterministic calibration** dropping

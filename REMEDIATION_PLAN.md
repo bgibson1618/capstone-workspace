@@ -21,11 +21,20 @@ retrievals."* Chosen sequence:
    an explicit storage/Brent open question); enforce highest-version-wins so a stale lower-version write
    can't clobber. *(verified: all stores INSERT-OR-REPLACE / last-write-wins; version inert)*
 
+## ⭐ TOP PRIORITY (Brent's call, 2026-06-22) — WIRE WRITE-ROUTING LIVE (cross-team w/ Keith)
+- **The write path bypasses the router.** Today `_Engine.remember` (`plugin/cookbook_memory/core/client.py:97-109`)
+  hardcodes `self._backends["markdown"].write(...)`, and the eval `MemoryFramework.{write,get,search,all}` are
+  `NotImplementedError` stubs (harness defaults to `InMemoryStore`). So **`route_write`/`Router.write`
+  (write-routing #56 + dedup #57) are built but NEVER CALLED** — write-routing/dedup aren't live, AND Brent's
+  stores are never exercised in a real run, which **blocks the headline <10% efficiency + accuracy-on-vs-off
+  metrics**. Storage paths (for reference): backends live under `$MEMORY_STORE` (default
+  `${CLAUDE_PROJECT_DIR}/.cookbook-memory`) — vectors=`memory.db`, markdown=`markdown/`, graph=in-memory.
+- **The fix (small but cross-layer):** change the write call site(s) to `self._router.write(item)` (which does
+  dedup → route_write → persist), and implement `MemoryFramework.write/search` over `Router`+backends. Brent owns
+  the seam (`route_write`/`Router.write` + tests, done) + an end-to-end integration test; Keith owns the plugin
+  `remember()` / `MemoryFramework` call-site. **Schedule with Keith.**
+
 ## CROSS-TEAM (flag to the team; not solo)
-- **Harness integration (with Keith)** — `MemoryFramework.{write,get,search,all}` are `NotImplementedError`
-  stubs; the harness defaults to `InMemoryStore`. Brent's stores are **never exercised in a real run**,
-  which **blocks the headline <10% efficiency + accuracy-on-vs-off metrics**. Brent owes the router/store
-  side + an integration test. HIGH.
 - **`version` invariant ownership** — per-store vs dreaming/persistence layer (TEAM_NOTES#1). Decide, then
   make architecture.md + code agree.
 - **Recall-only surface** — legacy `claudecode/memory_server.py` still registers `memory_remember`,

@@ -144,19 +144,30 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
     gate PASS. Mechanism built + validated; the eval machine-checks the overlap + demonstrates the danger.
   - **Step 3b — version-highest-wins: CROSS-TEAM (deferred).** Per-store vs dreaming-layer ownership is
     an open team question (TEAM_NOTES#1; Brent's lean: dreaming/persistence concern) — not a solo build.
-- **SOLO write-path work DONE** (WAL ✓ #52/#55, write-routing ✓ #56, dedup ✓ #57). **The gate now is
-  CROSS-TEAM (Keith):** the harness `MemoryFramework` is a stub, so **nothing calls `route_write`/
-  `Router.write` yet** — write-routing + dedup are built but NOT LIVE, and the headline efficiency/
-  accuracy metrics can't be measured on Brent's stores until integration lands. Brent owns the
-  `route()`/`route_write()`/`Router.write` seam + an integration test; Keith owns wiring `MemoryFramework`.
-  **THEN (menu):** **graph store (Neo4j + relational-retrieval accuracy) — SCOPED for next session, see
-  `GRAPH_STORE_SCOPE.md`** (eval-first: graph-retrieval eval → in-memory typed/directional edge model →
-  Neo4j backend as a proven no-op; the accuracy win is the edge model, not the DB); real benchmarks
-  (captained); 17 contested labels; backend perf-testing; closeout.
+- **SOLO write-path work DONE** (WAL ✓ #52/#55, write-routing ✓ #56, dedup ✓ #57) — but **built ≠ LIVE.**
+- **WHERE STORAGE ACTUALLY LIVES (the router holds NO path — it dispatches to backends built under `$MEMORY_STORE`):**
+  the plugin engine (`plugin/cookbook_memory/core/client.py:69-80` `_Engine.__init__`) builds the 3 backends under
+  `$MEMORY_STORE` (config.py:46; plugin hooks set it to **`${CLAUDE_PROJECT_DIR}/.cookbook-memory`**):
+  **vectors → `$MEMORY_STORE/memory.db`** (SQLite file), **markdown → `$MEMORY_STORE/markdown/`** (OKF docs),
+  **graph → in-memory (NO path, not persisted)**, events → `$MEMORY_STORE/<events>.jsonl`. Unset `$MEMORY_STORE`
+  → `store_path=None` → **fail-open** (recall empty, remember no-op). **Reads** go through the router
+  (`recall()` → `router.route(query).search`); **writes do NOT** — `remember()` (client.py:97-109) hardcodes
+  `self._backends["markdown"].write(...)`, bypassing `route_write`/`Router.write`. (In the *eval harness*,
+  `MemoryFramework` is a stub and it defaults to `InMemoryStore`, so the router isn't exercised there at all.)
+- **⭐ TOP PRIORITY (Brent's call) — WIRE WRITE-ROUTING LIVE (cross-team w/ Keith):** change the write path
+  (`_Engine.remember` / the harness `MemoryFramework.write`) to call **`self._router.write(item)`** instead of
+  writing only to markdown — so write-routing + dedup actually run, AND it unblocks the headline efficiency/
+  accuracy metrics on Brent's stores. The router side is done (`route_write`/`Router.write` + tests); the change
+  is small (one call site) but spans the plugin/harness layer → coordinate with Keith. Brent owns the seam +
+  an integration test; Keith owns the call-site/`MemoryFramework`. Also resolve version-highest-wins ownership.
+- **THEN (menu):** **graph store (Neo4j + relational-retrieval accuracy) — SCOPED, see `GRAPH_STORE_SCOPE.md`**
+  (eval-first: graph eval → in-memory typed/directional edge model → Neo4j as a proven no-op) — the solo thread
+  to progress while integration is scheduled; real benchmarks (captained); 17 contested labels; perf-testing; closeout.
 - **Resume:** `main` @ current. Write-path arc: **#55 WAL-enforce, #56 write-routing, #57 dedup — OPEN**
-  (#52 WAL merged). Solo write-path complete; not yet LIVE (integration pending). **Next session: the GRAPH
-  STORE thread is scoped + ready (`GRAPH_STORE_SCOPE.md`, start at Step 0 = the graph-retrieval eval)** while
-  Brent schedules the Keith integration. See `REMEDIATION_PLAN.md` for the full backlog.
+  (#52 WAL merged); solo work complete, **not yet LIVE.** **Next-session priorities: (1) ⭐ wire write-routing
+  live (the Keith integration — `remember()`/`MemoryFramework.write` → `Router.write`); (2) the GRAPH STORE
+  thread, scoped + ready (`GRAPH_STORE_SCOPE.md`, start at Step 0 = the graph-retrieval eval) as the solo thread
+  to progress meanwhile.** See `REMEDIATION_PLAN.md` for the full backlog.
 
 ## How to verify (run from `~/projects/agent-memory-harness/eval`)
 - Smoke gate (the team's CI check): `python3 tests/test_smoke.py` → **82 passed / 0 failed / 1 skipped** as of 2026-06-21 (count grows as the team adds tests / optional deps resolve — the contract is 0 failed; was 67→71→73→82).

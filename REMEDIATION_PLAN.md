@@ -61,14 +61,16 @@ path. Chosen sequence (historical, all done):
     quality lift is a captained run, and wiring it onto the default retrieval path is a follow-up.
   - **bge-m3 fallback embedder (PRD-6)** — still missing (an air-gapped open-source embedder behind the `embed=`
     seam; only Voyage + the hashing/Mock default ship). LOW — descope-or-build TBD.
-  - **Cross-backend fusion / read-orchestrator (PLAN-7)** — ✅ **partially DONE (#68, D027):** a
-    cross-backend FUSION profile (RRF + score-norm) ships **opt-in** via `Consult2Config`/`fusion_profile`
-    (single-route stays the speed default). *Correction:* this was briefly mis-scoped as "single-best by
-    design" — the router is a **speed↔accuracy spectrum** (Brent's intent); fusion is a wanted accuracy
-    config, not descoped. Flat on graph-centric D008; value proven on complementary backends. **Still
-    open:** a real-store (markdown+graph+vector) complementarity fixture to pick RRF-vs-score; the
-    fusion→rerank ("accuracy+") tier; named presets (speed/balanced/accuracy/accuracy+); a recency×relevancy
-    ranking knob. MED.
+  - **Cross-backend fusion / read-orchestrator (PLAN-7)** — ✅ **DONE + MEASURED (#68 D027, #72 bake-off,
+    D028 captained):** a fusion profile (RRF + score-norm) ships **opt-in** via `Consult2Config`/
+    `fusion_profile` (single-route stays the default). *Correction:* briefly mis-scoped as "single-best by
+    design" — the router is a **speed↔accuracy spectrum**; fusion is a wanted config. **Captained verdict
+    (D028):** with a real embedder, vectors single-route DOMINATES (recall@5 1.000) and **fusion DILUTES it
+    (0.900) — fusion loses to single-route when one backend is strong**; `score` > `rrf` (0.900 vs 0.850).
+    → **The accuracy profile is real-embedder vectors single-route, NOT fusion.** Fusion is niche/opt-in
+    (complementary, comparably-strong backends only). **Still open (lower priority now):** the fusion→rerank
+    ("accuracy+") tier; named presets; a recency×relevancy knob — but the headline accuracy lever is wiring
+    the **real embedder** (paid path), not fusion. LOW.
 - **Doc-honesty (TEAM_NOTES#2)** — `stores/__init__.py` overstated ANN/Neo4j as shipped → **FIXED in
   PR #64** (rewritten to v1 reality + deferred seams). `project-plan.md` may still overstate (multi-owner
   shared doc — coordinate with the team). LOW.

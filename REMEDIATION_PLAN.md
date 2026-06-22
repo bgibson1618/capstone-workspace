@@ -55,6 +55,15 @@ path. Chosen sequence (historical, all done):
   graph), graph full-field round-trip. LOW (code correct; removes silent-regression exposure).
 - **Commit live results as artifacts** — D020 (recall@5 0→1.0) + D021 bake-off live numbers live only in
   throwaway `work/` scripts; commit a captioned results artifact for reproducible evidence. LOW.
+- **Audit-flagged spec gaps (#61 PRD-compliance, surfaced via the pickup impact scan):**
+  - **Reranker (PRD-7)** — ✅ **DONE (#67, D026):** `stores/rerankers.py` (`MockReranker` + `VoyageReranker` +
+    `rerank_items` + `RerankedStore` over top-N; composes with `RouterStore`). Offline = mechanism only; the
+    quality lift is a captained run, and wiring it onto the default retrieval path is a follow-up.
+  - **bge-m3 fallback embedder (PRD-6)** — still missing (an air-gapped open-source embedder behind the `embed=`
+    seam; only Voyage + the hashing/Mock default ship). LOW — descope-or-build TBD.
+  - **Cross-backend read-orchestrator (PLAN-7)** — `route()` is single-best-first BY DESIGN (D003/D008/D009);
+    a recency×relevancy cross-backend rank + read-dedup is NOT built. Decide if v1 needs it or it's the
+    learned-router's job (D007). MED/LOW.
 - **Doc-honesty (TEAM_NOTES#2)** — `stores/__init__.py` overstated ANN/Neo4j as shipped → **FIXED in
   PR #64** (rewritten to v1 reality + deferred seams). `project-plan.md` may still overstate (multi-owner
   shared doc — coordinate with the team). LOW.

@@ -58,5 +58,12 @@ retrievals."* Chosen sequence:
     DB didn't get WAL).
   - Step 2 write-routing: **#56 OPEN** (D023 — `route_write`, default `base_all`; round-trip 1.000 vs
     selective 0.708; cross-vendor Codex gate PASS).
-  - Step 3 dedup-on-write + version-highest-wins: **NEXT**.
-- Archive this file once the arc + cross-team items are closed or explicitly descoped.
+  - Step 3a dedup-on-write: **#57 OPEN** (D024 — `Router.write`, default OFF: offline lexical dedup
+    can't separate near-dups from distinct-but-similar → false-merge = data loss; real-embedder-gated;
+    Codex gate PASS).
+  - Step 3b version-highest-wins: **DEFERRED — cross-team** (per-store vs dreaming-layer ownership, TEAM_NOTES#1).
+  - **Solo write-path work COMPLETE.** Remaining is **cross-team (Keith):** `MemoryFramework` integration
+    (write-routing/dedup are built but NOT LIVE — nothing calls `route_write`/`Router.write`; also
+    unblocks the headline efficiency/accuracy metrics) + version-ownership.
+- Archive this file once the cross-team items + the menu (benchmarks / contested labels / perf-test /
+  closeout) are closed or explicitly descoped.

@@ -16,7 +16,7 @@ backends) + `eval/memeval/router.py`. Teammates: Keith @kmazanec (harness/OpenCo
 - **`~/projects/agent-memory-harness`** — the SHARED code repo. Brent's real deliverables live
   here; changes ship via small PRs on `stores/*` / `router/*` branches.
 - **`~/projects/capstone-workspace`** (this dir) — Brent's PRIVATE planning/evidence/scratch,
-  NOT in the shared repo. Holds: this `CONTEXT.md`, `DECISION_LOG.md` (D001–D023, the AI
+  NOT in the shared repo. Holds: this `CONTEXT.md`, `DECISION_LOG.md` (D001–D024, the AI
   suggested/accepted/changed/rejected log), `ROUTING_EVALS.md`, `TEAM_NOTES.md`, and `work/` (gitignored
   scratch: delegate run dirs + throwaway eval scripts). The agent file-memory (`memory/` + `MEMORY.md`)
   lives separately under `~/.claude/projects/-home-brent-gibson-projects-capstone-workspace/memory/`
@@ -136,15 +136,24 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
     (1.000 vs selective 0.708 — content/query classification diverge under the rule classifier). Offline
     eval; cross-vendor Codex gate PASS. `route_write` is the router side; the agent/MemoryFramework
     *calling* it is cross-team (Keith).
-  - **Step 3 — dedup-on-write + version-highest-wins: NEXT.** similarity-merge → bump version, return id
-    (ADR-P2/P4); enforce highest-version-wins so a stale lower-version write can't clobber.
-- **CROSS-TEAM (Keith):** harness `MemoryFramework` integration (stubbed — blocks the headline
-  efficiency/accuracy metrics on Brent's stores) + wiring `route_write` on the write path + version-
-  invariant ownership. **THEN (menu):** real benchmarks (captained); 17 contested labels; backend
-  perf-testing; capstone closeout.
-- **Resume:** `main` @ current (`#52`/`#55`/`#56` are the write-path arc; **#56 write-routing OPEN**,
-  **#55 WAL-enforce OPEN**). Routing+embedder slice complete + measured (D020). Pick up at **write-path
-  step 3 (dedup-on-write + version-highest-wins)**; see `REMEDIATION_PLAN.md` for the full backlog.
+  - **Step 3a — dedup-on-write (D024): SHIPPED as PR #57 (OPEN).** `Router.write(item) → WriteReceipt`
+    (dedup-resolve → route_write → persist; newer-content-wins, version+1). **Default OFF** — D024
+    calibration proved offline lexical similarity can't separate near-dups (0.35–0.75) from
+    distinct-but-similar memories (0.21–0.82; a distinct "read 5s" vs "write 30s" scores 0.824 > every
+    real dup), so auto-merging would FALSE-MERGE = silent data loss; gated to a real embedder. Codex
+    gate PASS. Mechanism built + validated; the eval machine-checks the overlap + demonstrates the danger.
+  - **Step 3b — version-highest-wins: CROSS-TEAM (deferred).** Per-store vs dreaming-layer ownership is
+    an open team question (TEAM_NOTES#1; Brent's lean: dreaming/persistence concern) — not a solo build.
+- **SOLO write-path work DONE** (WAL ✓ #52/#55, write-routing ✓ #56, dedup ✓ #57). **The gate now is
+  CROSS-TEAM (Keith):** the harness `MemoryFramework` is a stub, so **nothing calls `route_write`/
+  `Router.write` yet** — write-routing + dedup are built but NOT LIVE, and the headline efficiency/
+  accuracy metrics can't be measured on Brent's stores until integration lands. Brent owns the
+  `route()`/`route_write()`/`Router.write` seam + an integration test; Keith owns wiring `MemoryFramework`.
+  **THEN (menu):** real benchmarks (captained); 17 contested labels; backend perf-testing; closeout.
+- **Resume:** `main` @ current. Write-path arc: **#55 WAL-enforce, #56 write-routing, #57 dedup — OPEN**
+  (#52 WAL merged). Solo write-path complete; not yet LIVE (integration pending). Pick up at the
+  **Keith integration** (make write-routing/dedup live + unblock metrics) or the **menu**; see
+  `REMEDIATION_PLAN.md` for the full backlog.
 
 ## How to verify (run from `~/projects/agent-memory-harness/eval`)
 - Smoke gate (the team's CI check): `python3 tests/test_smoke.py` → **82 passed / 0 failed / 1 skipped** as of 2026-06-21 (count grows as the team adds tests / optional deps resolve — the contract is 0 failed; was 67→71→73→82).
@@ -154,7 +163,7 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
 - Env: `python3` + `uv` (no `python`/`pip` on PATH). The offline path is zero-dependency.
 
 ## What's next (see Active work above for the live build state + the single next task)
-1. **Routing + embedder slice (D008–D022)** — *COMPLETE & measured* (PR1 #17 → PR3b-1 #41 → semantic-retrieval eval #44 → PR3b-2 #49, all merged; D020 recall@5 0.000 → 1.000; D021/D022 semantic classifier bounded). **Write-path arc (re-opened, D023+)** — *IN PROGRESS*: WAL (#52 merged, #55 enforce open) → write-routing (#56 open, D023) → dedup/version (next). Single next owned build = **write-path step 3 (dedup-on-write + version-highest-wins)**; cross-team integration with Keith unblocks the headline metrics. See **Active work** + `REMEDIATION_PLAN.md`. Brent's domain.
+1. **Routing + embedder slice (D008–D022)** — *COMPLETE & measured* (PR1 #17 → PR3b-1 #41 → semantic-retrieval eval #44 → PR3b-2 #49, all merged; D020 recall@5 0.000 → 1.000; D021/D022 semantic classifier bounded). **Write-path arc (re-opened, D023/D024)** — *SOLO WORK DONE*: WAL (#52 merged, #55 enforce open) → write-routing (#56 open, D023, default base_all) → dedup-on-write (#57 open, D024, default OFF/real-embedder-gated). **No solo build remains** — the gate is **cross-team integration with Keith** (`MemoryFramework` stubbed → write-routing/dedup built but NOT LIVE; also unblocks the headline metrics) + version-highest-wins ownership. See **Active work** + `REMEDIATION_PLAN.md`. Brent's domain.
 2. **Captained eval runs** — SWE-ContextBench + ContextBench (Brent's), on **real embeddings** + his own API key. Needs the deferred env setup (uv venv + Voyage/bge + ANN index). Run via the repo's GitHub Actions **Benchmark run** workflow (`.github/workflows/benchmark.yml`) on Brent's own key (repo secret `ANTHROPIC_API_KEY_BGIBSON1618`; $10 default budget) — see `collaborate.html` / `plan.md`. **Optional** — the build doesn't depend on it.
 3. **router↔harness integration** — coordinate the seam with Keith's harness. The router exposes `route(query) -> MemoryStore`, `classify(query) -> backend-name`, and `explain(query)` (scores + margin); the seam is Keith's primary agent calling `route()` (per the if/where-how split: the agent decides *if* to retrieve, the router decides *where/how*). No owner/branch/acceptance defined yet — coordinate with Keith.
 4. **Team-coordination items** — see `TEAM_NOTES.md`: (a) version-invariant (`architecture.md` vs the stores), (b) `project-plan.md` overstates shipped production pieces.

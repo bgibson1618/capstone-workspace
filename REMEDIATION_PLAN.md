@@ -31,10 +31,14 @@ path. Chosen sequence (historical, all done):
   stores are never exercised in a real run, which **blocks the headline <10% efficiency + accuracy-on-vs-off
   metrics**. Storage paths (for reference): backends live under `$MEMORY_STORE` (default
   `${CLAUDE_PROJECT_DIR}/.cookbook-memory`) — vectors=`memory.db`, markdown=`markdown/`, graph=in-memory.
-- **The fix (small but cross-layer):** change the write call site(s) to `self._router.write(item)` (which does
-  dedup → route_write → persist), and implement `MemoryFramework.write/search` over `Router`+backends. Brent owns
-  the seam (`route_write`/`Router.write` + tests, done) + an end-to-end integration test; Keith owns the plugin
-  `remember()` / `MemoryFramework` call-site. **Schedule with Keith.**
+- **✅ UPDATE (#66 / D025) — RouterStore adapter shipped (solo):** `RouterStore` (a `MemoryStore` facade over the
+  Router: `write→Router.write`, `search→route().search`, `get`/`all` union+dedup) is built + eval-gated (13 tests,
+  Codex gate clean), and routed writes now run **end-to-end in the #63 native eval pipeline** (`store=RouterStore`;
+  `WriteReceipt` proves markdown+vectors+graph fan-out). The router seam + an integration test (Brent's) are DONE.
+  **Remaining (Keith's files):** adopt `RouterStore` at the plugin `_Engine.remember` (`client.py:102`,
+  markdown-hardcoded) and the `MemoryFramework.{write,get,search,all}` stubs (`framework.py:60-77`) — de-risked to
+  "adopt this adapter" — plus a **captained large-benchmark metric run** (real embedder) for the headline lift
+  (offline samples show parity, D019/D020 lesson). **Schedule with Keith.**
 
 ## CROSS-TEAM (flag to the team; not solo)
 - **`version` invariant ownership** — per-store vs dreaming/persistence layer (TEAM_NOTES#1). Decide, then
@@ -75,8 +79,10 @@ path. Chosen sequence (historical, all done):
     can't separate near-dups from distinct-but-similar → false-merge = data loss; real-embedder-gated;
     Codex gate PASS).
   - Step 3b version-highest-wins: **DEFERRED — cross-team** (per-store vs dreaming-layer ownership, TEAM_NOTES#1).
-  - **Solo write-path work COMPLETE.** Remaining is **cross-team (Keith):** `MemoryFramework` integration
-    (write-routing/dedup are built but NOT LIVE — nothing calls `route_write`/`Router.write`; also
-    unblocks the headline efficiency/accuracy metrics) + version-ownership.
+  - **Solo write-path work COMPLETE + write-routing now LIVE in the eval pipeline (RouterStore #66, D025):**
+    a `MemoryStore` adapter over the Router; routed writes run end-to-end through the #63 native pipeline solo
+    (`WriteReceipt` proves 3-backend fan-out; Codex gate clean). Remaining is **cross-team (Keith):** adopt
+    `RouterStore` at the plugin `_Engine.remember` + `MemoryFramework` stub sites (de-risked) + a captained
+    large-benchmark run (real embedder) + version-highest-wins ownership.
 - Archive this file once the cross-team items + the menu (benchmarks / contested labels / perf-test /
   closeout) are closed or explicitly descoped.

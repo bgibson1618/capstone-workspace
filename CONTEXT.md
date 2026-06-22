@@ -23,7 +23,7 @@ backends) + `eval/memeval/router.py`. Teammates: Keith @kmazanec (harness/OpenCo
   (auto-loaded each session), NOT in this dir. Demo/info material made here may target **Nerdy**
   (tentative — not folded into any plan yet).
 
-## Current state: core build SHIPPED; routing+embedder slice + write-path arc COMPLETE & MERGED; Keith integration is the live gate (see Active work)
+## Current state: core build SHIPPED; routing+embedder slice + write-path arc COMPLETE & MERGED; write-routing now LIVE in the eval pipeline (RouterStore #66, D025); remaining gate = Keith adopts the adapter at the plugin/framework sites (see Active work)
 The original four owned components are implemented, **stdlib-offline** (real paths behind lazy injection
 seams), **eval-first**, independently reviewed, and squash-merged to `main` (PRs **#5–#12**). Since then a
 larger extension arc (cascade meta-index, speed/accuracy profiles, eval growth, learned classifiers +
@@ -37,7 +37,7 @@ real embedder) has shipped PRs **#17, #23, #27, #28, #29, #34, #41** — current
 `main` is clean and synced; all tests green. An independent `/sanity` (Codex) pass was run and
 its findings remediated (durable eval committed, docs reconciled, team items captured below).
 
-## Active work: routing+embedder slice + write-path arc COMPLETE & MERGED; Keith integration = live gate (updated 2026-06-22)
+## Active work: routing+embedder slice + write-path arc COMPLETE & MERGED; write-routing LIVE in the eval pipeline via RouterStore #66 (D025); Keith adopts it at the plugin/framework sites (updated 2026-06-22)
 Building the D008 cascade + the speed/accuracy profile seam, eval-first, run as the **agent-roster
 orchestrator** (delegating to architect/implementer/verifier roster runs; see DECISION_LOG D008 +
 D016 for the ruled design, D017 for IRCoT scoped-out).
@@ -144,7 +144,7 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
     gate PASS. Mechanism built + validated; the eval machine-checks the overlap + demonstrates the danger.
   - **Step 3b — version-highest-wins: CROSS-TEAM (deferred).** Per-store vs dreaming-layer ownership is
     an open team question (TEAM_NOTES#1; Brent's lean: dreaming/persistence concern) — not a solo build.
-- **SOLO write-path work DONE** (WAL ✓ #52/#55, write-routing ✓ #56, dedup ✓ #57) — but **built ≠ LIVE.**
+- **SOLO write-path work DONE** (WAL ✓ #52/#55, write-routing ✓ #56, dedup ✓ #57) + **RouterStore adapter ✓ #66 (D025)** — routed writes are now **LIVE in the eval pipeline** (the #63 native `store=` seam; `WriteReceipt` proves 3-backend fan-out). The remaining live-wiring is the plugin/`MemoryFramework` sites (Keith), now de-risked to "adopt the adapter."
 - **WHERE STORAGE ACTUALLY LIVES (the router holds NO path — it dispatches to backends built under `$MEMORY_STORE`):**
   the plugin engine (`plugin/cookbook_memory/core/client.py:69-80` `_Engine.__init__`) builds the 3 backends under
   `$MEMORY_STORE` (config.py:46; plugin hooks set it to **`${CLAUDE_PROJECT_DIR}/.cookbook-memory`**):
@@ -154,24 +154,26 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
   (`recall()` → `router.route(query).search`); **writes do NOT** — `remember()` (client.py:97-109) hardcodes
   `self._backends["markdown"].write(...)`, bypassing `route_write`/`Router.write`. (In the *eval harness*,
   `MemoryFramework` is a stub and it defaults to `InMemoryStore`, so the router isn't exercised there at all.)
-- **⭐ TOP PRIORITY (Brent's call) — WIRE WRITE-ROUTING LIVE (cross-team w/ Keith):** change the write path
-  (`_Engine.remember` / the harness `MemoryFramework.write`) to call **`self._router.write(item)`** instead of
-  writing only to markdown — so write-routing + dedup actually run, AND it unblocks the headline efficiency/
-  accuracy metrics on Brent's stores. The router side is done (`route_write`/`Router.write` + tests). Scope is
-  bigger than one line: (a) the plugin debug-write `_Engine.remember` (`client.py:102`, one call site) → `Router.write`;
-  (b) the eval-harness `MemoryFramework.{write,get,search,all}` — currently ALL `NotImplementedError` stubs
-  (`eval/memeval/opencode/framework.py:60-77`) — implemented over Router+backends; (c) an end-to-end metric run
-  proving the headline efficiency/accuracy on Brent's stores. Brent owns the seam + an integration test; Keith
-  owns the plugin call-site + `MemoryFramework`. Also resolve version-highest-wins ownership.
+- **⭐ TOP PRIORITY — adopt RouterStore at the live write sites (cross-team w/ Keith):** `RouterStore` (#66,
+  D025) is the `MemoryStore` adapter that makes the Router's routed + dedup write path usable wherever a store is
+  expected; routed writes already run **end-to-end in the #63 native eval pipeline** (solo, via `store=RouterStore`
+  — `WriteReceipt` proves fan-out to markdown+vectors+graph). Remaining live-wiring (Keith's files): (a) plugin
+  `_Engine.remember` (`client.py:102`, markdown-hardcoded) → `RouterStore` / `self._router.write`; (b) the harness
+  `MemoryFramework.{write,get,search,all}` stubs (`eval/memeval/opencode/framework.py:60-77`) → delegate to
+  `RouterStore`; (c) a **captained** large-benchmark metric run (real embedder) to show the lift over
+  `InMemoryStore` (offline samples show parity — D019/D020 lesson). De-risked to "adopt this adapter." Also
+  resolve version-highest-wins ownership.
 - **THEN (menu):** **graph store (Neo4j + relational-retrieval accuracy) — SCOPED, see `GRAPH_STORE_SCOPE.md`**
   (eval-first: graph eval → in-memory typed/directional edge model → Neo4j as a proven no-op) — the solo thread
   to progress while integration is scheduled; real benchmarks (captained); 17 contested labels; perf-testing; closeout.
-- **Resume:** `main` @ current (also merged since: #53 plugin-real eval mode, #54 ADR-019 "MEMORY_STORE is a
-  directory"). Write-path arc: **#52/#55/#56/#57 all MERGED** — solo write-path complete + in main, but
-  **NOT yet LIVE** (nothing calls `route_write`/`Router.write`). **Next-session priorities: (1) ⭐ wire write-routing
-  live (the Keith integration — `remember()`/`MemoryFramework.write` → `Router.write`); (2) the GRAPH STORE
-  thread, scoped + ready (`GRAPH_STORE_SCOPE.md`, start at Step 0 = the graph-retrieval eval) as the solo thread
-  to progress meanwhile.** See `REMEDIATION_PLAN.md` for the full backlog.
+- **Resume:** shared `main` @ current (teammate PRs merged since: #60 dataset schema, **#61 PRD-compliance
+  audit + ablation survey**, **#62 Docker removed / Claude Code CLI coding agent**, **#63 benchmark-native eval
+  pipeline (5 benches)**, #64 stores docstring, #65 CC rationale). Write-path arc **#52/#55/#56/#57 MERGED**;
+  **RouterStore #66 (D025, OPEN)** makes routed writes **LIVE in the #63 eval pipeline** (solo — `store=RouterStore`).
+  **Next-session priorities: (1) ⭐ Keith adopts RouterStore at the plugin `_Engine.remember` + `MemoryFramework`
+  live sites + a captained large-benchmark metric run (real embedder); (2) the GRAPH STORE thread, scoped + ready
+  (`GRAPH_STORE_SCOPE.md`, start at Step 0 = the graph-retrieval eval) as the solo thread to progress meanwhile.**
+  See `REMEDIATION_PLAN.md` for the full backlog.
 
 ## How to verify (run from `~/projects/agent-memory-harness/eval`)
 - Smoke gate (the team's CI check): `python3 tests/test_smoke.py` → **82 passed / 0 failed / 1 skipped** as of 2026-06-21 (count grows as the team adds tests / optional deps resolve — the contract is 0 failed; was 67→71→73→82).
@@ -183,7 +185,7 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
 ## What's next (see Active work above for the live build state + the single next task)
 1. **Routing + embedder slice (D008–D022)** — *COMPLETE & measured* (PR1 #17 → PR3b-1 #41 → semantic-retrieval eval #44 → PR3b-2 #49, all merged; D020 recall@5 0.000 → 1.000; D021/D022 semantic classifier bounded). **Write-path arc (re-opened, D023/D024)** — *SOLO WORK DONE & MERGED*: WAL (#52/#55) → write-routing (#56, D023, default base_all) → dedup-on-write (#57, D024, default OFF/real-embedder-gated) — all in `main`. **No solo build remains** — the ⭐ priority is the **cross-team integration with Keith** (`MemoryFramework`/`remember()` stubbed → write-routing/dedup built but NOT LIVE; also unblocks the headline metrics) + version-highest-wins ownership. See **Active work** + `REMEDIATION_PLAN.md`. Brent's domain.
 2. **Captained benchmark runs** — SWE-ContextBench + ContextBench, real embeddings + Brent's key, via the GitHub Actions **Benchmark run** workflow (`.github/workflows/benchmark.yml`; repo secret `ANTHROPIC_API_KEY_BGIBSON1618`, $10 default budget; see `collaborate.html`/`plan.md`). **This is the PRODUCT/capstone success gate** — the PRD criterion (Haiku+harness beats Opus-no-memory on ≥2/5 benchmarks at <~10% overhead) is proven HERE. It is **TEAM-level** (Keith/Ken's harness drives it); Brent's slice *contributes the per-store efficiency/relevancy inputs*, which **require the #3 integration first** (the stores must actually be exercised in a real run — see "built ≠ live"). So: not "optional" for capstone submission, but **gated on #3 + cross-team**, not a solo build.
-3. **router↔harness integration — ⭐ THE TOP PRIORITY** (also in **Active work**). Makes write-routing/dedup LIVE and unblocks #2. **Acceptance (now defined):** (a) `_Engine.remember` (`plugin/.../client.py`) + the `MemoryFramework.{write,get,search,all}` stubs (`eval/memeval/opencode/framework.py`) call `Router.write` / `route()` over the registered backends (today they bypass/stub the router); (b) a committed integration test proving a remembered item is write-routed and retrievable via the router round-trip; (c) one end-to-end run producing efficiency/relevancy numbers on Brent's stores. **Proposed split:** Brent owns the router seam (`route_write`/`Router.write` — done — + the integration test); Keith owns the plugin call-site + `MemoryFramework` impl; land as a **joint integration PR** (branch decided at the Brent↔Keith sync). **version-highest-wins is NOT a blocker** for wiring (dedup default-off + newer-wins doesn't need it) — resolve it independently (#4).
+3. **router↔harness integration — ⭐ THE TOP PRIORITY** (also in **Active work**). Makes write-routing/dedup LIVE and unblocks #2. **Acceptance (now defined):** (a) `_Engine.remember` (`plugin/.../client.py`) + the `MemoryFramework.{write,get,search,all}` stubs (`eval/memeval/opencode/framework.py`) call `Router.write` / `route()` over the registered backends (today they bypass/stub the router); (b) a committed integration test proving a remembered item is write-routed and retrievable via the router round-trip; (c) one end-to-end run producing efficiency/relevancy numbers on Brent's stores. **Proposed split:** Brent owns the router seam (`route_write`/`Router.write` — done — + the integration test); Keith owns the plugin call-site + `MemoryFramework` impl; land as a **joint integration PR** (branch decided at the Brent↔Keith sync). **version-highest-wins is NOT a blocker** for wiring (dedup default-off + newer-wins doesn't need it) — resolve it independently (#4). **STATUS (#66 / D025):** `RouterStore` shipped the adapter + proved routed writes live end-to-end in the #63 eval pipeline *solo*; remaining = Keith adopts it at the two stub sites + a captained large-benchmark run.
    - **Definition of done:** *Brent's slice* is done once write-routing is LIVE + an end-to-end metric run exists on his stores; *capstone/product readiness* additionally needs #2's ≥2/5-benchmark result (team-level). The legacy recall/`memory_remember` surface (REMEDIATION_PLAN) is a **later cleanup, not a wiring blocker**.
 4. **Team-coordination items** — see `TEAM_NOTES.md`: (a) version-invariant (`architecture.md` vs the stores), (b) `project-plan.md` overstates shipped production pieces.
 5. **Capstone closeout** — evidence-pack readiness (`/evidence-pack`), a Nerdy-aimed demo (`/demo`).

@@ -16,14 +16,14 @@ backends) + `eval/memeval/router.py`. Teammates: Keith @kmazanec (harness/OpenCo
 - **`~/projects/agent-memory-harness`** — the SHARED code repo. Brent's real deliverables live
   here; changes ship via small PRs on `stores/*` / `router/*` branches.
 - **`~/projects/capstone-workspace`** (this dir) — Brent's PRIVATE planning/evidence/scratch,
-  NOT in the shared repo. Holds: this `CONTEXT.md`, `DECISION_LOG.md` (D001–D022, the AI
+  NOT in the shared repo. Holds: this `CONTEXT.md`, `DECISION_LOG.md` (D001–D023, the AI
   suggested/accepted/changed/rejected log), `ROUTING_EVALS.md`, `TEAM_NOTES.md`, and `work/` (gitignored
   scratch: delegate run dirs + throwaway eval scripts). The agent file-memory (`memory/` + `MEMORY.md`)
   lives separately under `~/.claude/projects/-home-brent-gibson-projects-capstone-workspace/memory/`
   (auto-loaded each session), NOT in this dir. Demo/info material made here may target **Nerdy**
   (tentative — not folded into any plan yet).
 
-## Current state: core build SHIPPED; D008 cascade + profiles + PR3 extension COMPLETE & measured (see Active work)
+## Current state: core build SHIPPED; routing+embedder slice COMPLETE & measured; WRITE-PATH ARC in progress (see Active work)
 The original four owned components are implemented, **stdlib-offline** (real paths behind lazy injection
 seams), **eval-first**, independently reviewed, and squash-merged to `main` (PRs **#5–#12**). Since then a
 larger extension arc (cascade meta-index, speed/accuracy profiles, eval growth, learned classifiers +
@@ -37,7 +37,7 @@ real embedder) has shipped PRs **#17, #23, #27, #28, #29, #34, #41** — current
 `main` is clean and synced; all tests green. An independent `/sanity` (Codex) pass was run and
 its findings remediated (durable eval committed, docs reconciled, team items captured below).
 
-## Active work: D008 cascade + router profiles + PR3 learned-path — COMPLETE & measured (updated 2026-06-21)
+## Active work: routing+embedder slice COMPLETE & measured; WRITE-PATH ARC in progress (updated 2026-06-21)
 Building the D008 cascade + the speed/accuracy profile seam, eval-first, run as the **agent-roster
 orchestrator** (delegating to architect/implementer/verifier roster runs; see DECISION_LOG D008 +
 D016 for the ruled design, D017 for IRCoT scoped-out).
@@ -126,14 +126,25 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
   Decision: multilingual routing is a **known limitation** for the **learned north-star router (D007)**;
   rejected a brittle language-gate (the fr case has no accents) and overfit multilingual rules. The
   **routing + embedder slice (D008–D022) is COMPLETE & measured.**
-- **NEXT — open menu (Brent picks the thread):** (a) real benchmarks (SWE-ContextBench/ContextBench,
-  captained, on Brent's key/budget); (b) router↔harness integration with Keith (`route()`/`classify()`/
-  `explain()` seam); (c) adjudicate the 17 contested routing labels; (d) capstone closeout (evidence pack
-  `/evidence-pack`, Nerdy demo `/demo`); (optional) spaCy adapter (no key; install-heavy de/zh/fr models).
-- **Resume:** `main` @ `5b2a118` (#49 merged), clean & synced. **Routing + embedder slice (D008–D022)
-  COMPLETE & measured** — semantic classifier shipped as opt-in accuracy strategy; hybrid scoped out (D022),
-  multilingual → learned north-star (D007). No build in flight. Pick up at the **open menu** (real
-  benchmarks / Keith integration / 17 contested labels / capstone closeout) — Brent picks the thread.
+- **WRITE-PATH ARC — re-opened (Brent: "accurate on writes AND retrievals").** A sanity audit
+  (`REMEDIATION_PLAN.md`, 27 items / 7 high) found the read side solid but the write side underbuilt.
+  Sequence (eval-first, each its own gated PR):
+  - **Step 1 — WAL: DONE.** `SqliteVectorStore` opens with `PRAGMA journal_mode=WAL` (ADR-P2) — **#52
+    merged**; CodeRabbit enforcement follow-up **#55 open** (raise if a file-backed DB didn't get WAL).
+  - **Step 2 — write-routing (D023): SHIPPED as PR #56 (OPEN).** `Router.route_write(item)` (the router
+    owns WHERE to STORE, D009); default `write_policy=base_all` chosen by a round-trip calibration
+    (1.000 vs selective 0.708 — content/query classification diverge under the rule classifier). Offline
+    eval; cross-vendor Codex gate PASS. `route_write` is the router side; the agent/MemoryFramework
+    *calling* it is cross-team (Keith).
+  - **Step 3 — dedup-on-write + version-highest-wins: NEXT.** similarity-merge → bump version, return id
+    (ADR-P2/P4); enforce highest-version-wins so a stale lower-version write can't clobber.
+- **CROSS-TEAM (Keith):** harness `MemoryFramework` integration (stubbed — blocks the headline
+  efficiency/accuracy metrics on Brent's stores) + wiring `route_write` on the write path + version-
+  invariant ownership. **THEN (menu):** real benchmarks (captained); 17 contested labels; backend
+  perf-testing; capstone closeout.
+- **Resume:** `main` @ current (`#52`/`#55`/`#56` are the write-path arc; **#56 write-routing OPEN**,
+  **#55 WAL-enforce OPEN**). Routing+embedder slice complete + measured (D020). Pick up at **write-path
+  step 3 (dedup-on-write + version-highest-wins)**; see `REMEDIATION_PLAN.md` for the full backlog.
 
 ## How to verify (run from `~/projects/agent-memory-harness/eval`)
 - Smoke gate (the team's CI check): `python3 tests/test_smoke.py` → **82 passed / 0 failed / 1 skipped** as of 2026-06-21 (count grows as the team adds tests / optional deps resolve — the contract is 0 failed; was 67→71→73→82).
@@ -143,7 +154,7 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
 - Env: `python3` + `uv` (no `python`/`pip` on PATH). The offline path is zero-dependency.
 
 ## What's next (see Active work above for the live build state + the single next task)
-1. **Routing + embedder slice (D008–D022)** — *COMPLETE & measured* (PR1 #17 → PR3b-1 #41 → semantic-retrieval eval #44 → PR3b-2 #49, all merged). Live-measured: D020 divergence recall@5 0.000 → 1.000; D021 semantic classifier not eligible standalone; D022 hybrid scoped out (multilingual → learned north-star D007). No single owned build remains — **next is an open menu** (real benchmarks / Keith integration / 17 contested labels / closeout), see **Active work**. Brent's domain.
+1. **Routing + embedder slice (D008–D022)** — *COMPLETE & measured* (PR1 #17 → PR3b-1 #41 → semantic-retrieval eval #44 → PR3b-2 #49, all merged; D020 recall@5 0.000 → 1.000; D021/D022 semantic classifier bounded). **Write-path arc (re-opened, D023+)** — *IN PROGRESS*: WAL (#52 merged, #55 enforce open) → write-routing (#56 open, D023) → dedup/version (next). Single next owned build = **write-path step 3 (dedup-on-write + version-highest-wins)**; cross-team integration with Keith unblocks the headline metrics. See **Active work** + `REMEDIATION_PLAN.md`. Brent's domain.
 2. **Captained eval runs** — SWE-ContextBench + ContextBench (Brent's), on **real embeddings** + his own API key. Needs the deferred env setup (uv venv + Voyage/bge + ANN index). Run via the repo's GitHub Actions **Benchmark run** workflow (`.github/workflows/benchmark.yml`) on Brent's own key (repo secret `ANTHROPIC_API_KEY_BGIBSON1618`; $10 default budget) — see `collaborate.html` / `plan.md`. **Optional** — the build doesn't depend on it.
 3. **router↔harness integration** — coordinate the seam with Keith's harness. The router exposes `route(query) -> MemoryStore`, `classify(query) -> backend-name`, and `explain(query)` (scores + margin); the seam is Keith's primary agent calling `route()` (per the if/where-how split: the agent decides *if* to retrieve, the router decides *where/how*). No owner/branch/acceptance defined yet — coordinate with Keith.
 4. **Team-coordination items** — see `TEAM_NOTES.md`: (a) version-invariant (`architecture.md` vs the stores), (b) `project-plan.md` overstates shipped production pieces.

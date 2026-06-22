@@ -16,14 +16,14 @@ backends) + `eval/memeval/router.py`. Teammates: Keith @kmazanec (harness/OpenCo
 - **`~/projects/agent-memory-harness`** — the SHARED code repo. Brent's real deliverables live
   here; changes ship via small PRs on `stores/*` / `router/*` branches.
 - **`~/projects/capstone-workspace`** (this dir) — Brent's PRIVATE planning/evidence/scratch,
-  NOT in the shared repo. Holds: this `CONTEXT.md`, `DECISION_LOG.md` (D001–D021, the AI
+  NOT in the shared repo. Holds: this `CONTEXT.md`, `DECISION_LOG.md` (D001–D022, the AI
   suggested/accepted/changed/rejected log), `ROUTING_EVALS.md`, `TEAM_NOTES.md`, and `work/` (gitignored
   scratch: delegate run dirs + throwaway eval scripts). The agent file-memory (`memory/` + `MEMORY.md`)
   lives separately under `~/.claude/projects/-home-brent-gibson-projects-capstone-workspace/memory/`
   (auto-loaded each session), NOT in this dir. Demo/info material made here may target **Nerdy**
   (tentative — not folded into any plan yet).
 
-## Current state: core build SHIPPED; D008 cascade + profiles + PR3 extension IN PROGRESS (see Active work)
+## Current state: core build SHIPPED; D008 cascade + profiles + PR3 extension COMPLETE & measured (see Active work)
 The original four owned components are implemented, **stdlib-offline** (real paths behind lazy injection
 seams), **eval-first**, independently reviewed, and squash-merged to `main` (PRs **#5–#12**). Since then a
 larger extension arc (cascade meta-index, speed/accuracy profiles, eval growth, learned classifiers +
@@ -37,7 +37,7 @@ real embedder) has shipped PRs **#17, #23, #27, #28, #29, #34, #41** — current
 `main` is clean and synced; all tests green. An independent `/sanity` (Codex) pass was run and
 its findings remediated (durable eval committed, docs reconciled, team items captured below).
 
-## Active work: D008 cascade + router profiles + PR3 learned-path — IN PROGRESS (updated 2026-06-21)
+## Active work: D008 cascade + router profiles + PR3 learned-path — COMPLETE & measured (updated 2026-06-21)
 Building the D008 cascade + the speed/accuracy profile seam, eval-first, run as the **agent-roster
 orchestrator** (delegating to architect/implementer/verifier roster runs; see DECISION_LOG D008 +
 D016 for the ruled design, D017 for IRCoT scoped-out).
@@ -118,16 +118,22 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
   nearest-exemplar matching loses the rules' precise lexical signals and regresses English. The **eval-first
   bar (recovery AND no-regression) correctly rejected it** as a drop-in rules replacement — the failure an
   "it does multilingual!" demo would have hidden. (Script: `work/voyage_routing_bakeoff_d021.py`.)
-- **NEXT — rules→semantic HYBRID (eval-first):** route by rules first; consult the semantic classifier only
-  on no/low-signal (margin≈0) queries — notably non-English — so multilingual recall is gained WITHOUT the
-  English regression. Define the hybrid's gate, then measure vs the same bake-off bar. Levers: mean vs max
-  agg, a confidence threshold, a sharper exemplar set. (Do not chase eligibility by tuning knobs in a live
-  run — overfitting.)
-- **THEN:** optional spaCy adapter (no key; install-heavy de/zh/fr models); adjudicate the 17 contested
-  routing labels; real benchmarks (SWE-ContextBench/ContextBench); router↔harness integration with Keith.
-- **Resume:** `main` @ `b8c4181` (#44 merged), clean & synced. **PR #49 OPEN** (`router/pr3b2-semantic-classifier`
-  @ `48dbb39`, gated PASS; D021 measured — not eligible standalone). Embedder slice complete + live-measured
-  (D020). Pick up at the **rules→semantic hybrid (eval-first)**; then spaCy + 17 contested labels.
+- **Rules→semantic HYBRID — SCOPED OUT (DECISION_LOG D022).** Eval-first grounding *before* building
+  killed it: the multilingual GAP cases are NOT no-signal — their code identifiers (`RouterConfig`/
+  `embedding_store`/`rate_limiter`) fire a confident-but-wrong markdown token (best 1.0/2.5/2.0),
+  score-indistinguishable from correct English markdown (golden 1.0–3.0). No rules-confidence threshold
+  separates them; the only separator is language, and blanket semantic-override regresses English (D021).
+  Decision: multilingual routing is a **known limitation** for the **learned north-star router (D007)**;
+  rejected a brittle language-gate (the fr case has no accents) and overfit multilingual rules. The
+  **routing + embedder slice (D008–D022) is COMPLETE & measured.**
+- **NEXT — open menu (Brent picks the thread):** (a) real benchmarks (SWE-ContextBench/ContextBench,
+  captained, on Brent's key/budget); (b) router↔harness integration with Keith (`route()`/`classify()`/
+  `explain()` seam); (c) adjudicate the 17 contested routing labels; (d) capstone closeout (evidence pack
+  `/evidence-pack`, Nerdy demo `/demo`); (optional) spaCy adapter (no key; install-heavy de/zh/fr models).
+- **Resume:** `main` @ `5b2a118` (#49 merged), clean & synced. **Routing + embedder slice (D008–D022)
+  COMPLETE & measured** — semantic classifier shipped as opt-in accuracy strategy; hybrid scoped out (D022),
+  multilingual → learned north-star (D007). No build in flight. Pick up at the **open menu** (real
+  benchmarks / Keith integration / 17 contested labels / capstone closeout) — Brent picks the thread.
 
 ## How to verify (run from `~/projects/agent-memory-harness/eval`)
 - Smoke gate (the team's CI check): `python3 tests/test_smoke.py` → **82 passed / 0 failed / 1 skipped** as of 2026-06-21 (count grows as the team adds tests / optional deps resolve — the contract is 0 failed; was 67→71→73→82).
@@ -137,7 +143,7 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
 - Env: `python3` + `uv` (no `python`/`pip` on PATH). The offline path is zero-dependency.
 
 ## What's next (see Active work above for the live build state + the single next task)
-1. **Cascade / meta-index + profiles + embedder + semantic classifier (D008/D016/D019/D020/D021)** — *SHIPPED* (PR1 #17 → PR3b-1 #41 → semantic-retrieval eval #44 → PR3b-2 #49 open). Live-measured: D020 divergence recall@5 0.000 → 1.000; D021 semantic-router classifier NOT eligible standalone (net −14 vs rules, recovers 2/3 multilingual). The single next task is a **rules→semantic HYBRID** (eval-first) — see **Active work**. Brent's domain.
+1. **Routing + embedder slice (D008–D022)** — *COMPLETE & measured* (PR1 #17 → PR3b-1 #41 → semantic-retrieval eval #44 → PR3b-2 #49, all merged). Live-measured: D020 divergence recall@5 0.000 → 1.000; D021 semantic classifier not eligible standalone; D022 hybrid scoped out (multilingual → learned north-star D007). No single owned build remains — **next is an open menu** (real benchmarks / Keith integration / 17 contested labels / closeout), see **Active work**. Brent's domain.
 2. **Captained eval runs** — SWE-ContextBench + ContextBench (Brent's), on **real embeddings** + his own API key. Needs the deferred env setup (uv venv + Voyage/bge + ANN index). Run via the repo's GitHub Actions **Benchmark run** workflow (`.github/workflows/benchmark.yml`) on Brent's own key (repo secret `ANTHROPIC_API_KEY_BGIBSON1618`; $10 default budget) — see `collaborate.html` / `plan.md`. **Optional** — the build doesn't depend on it.
 3. **router↔harness integration** — coordinate the seam with Keith's harness. The router exposes `route(query) -> MemoryStore`, `classify(query) -> backend-name`, and `explain(query)` (scores + margin); the seam is Keith's primary agent calling `route()` (per the if/where-how split: the agent decides *if* to retrieve, the router decides *where/how*). No owner/branch/acceptance defined yet — coordinate with Keith.
 4. **Team-coordination items** — see `TEAM_NOTES.md`: (a) version-invariant (`architecture.md` vs the stores), (b) `project-plan.md` overstates shipped production pieces.

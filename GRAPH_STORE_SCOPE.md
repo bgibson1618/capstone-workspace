@@ -12,8 +12,9 @@
 > deferred to the embedder-seed step. **Steps 1 (#81/D030) + 1b (#84/D031) now DONE** — typed/directional
 > edges + `okf.py` anchor-capture (real OKF `[depends on](x.md)` links typed end-to-end, always-tuple
 > `okf_links`; gated by `test_okf_to_graph.py`, 9 tests). **multi_hop also DONE (#85/D032 = configurable
-> `max_depth`, a knob that recovers the depth-3 gold; default byte-equiv).** **Next = accuracy-profile depth
-> wiring (deferred follow-up, + captained "does deeper help") / semantic_seed embedder / Neo4j durability.**
+> `max_depth`, a knob that recovers the depth-3 gold; default byte-equiv).** **accuracy-profile wiring DONE
+> (#86/D033 — cascade injects per-query depth, accuracy=3 PROVISIONAL). Next = semantic_seed embedder seeding
+> (offline seam + headroom eval; captained win) / Neo4j durability.**
 
 ## The core call (panel unanimous)
 **Relational-retrieval ACCURACY lives in the edge model + traversal — fully testable in-memory,
@@ -80,7 +81,7 @@ real accuracy win is **captained-only** (D019/D020 lesson). Sequence below the C
   -timestamp, item_id)` (`graph_store.py:128`); Cypher vs Python float ordering can diverge.
 
 ## Ordered build plan (each its own eval-first, gated PR)
-> **Step 1 — ✅ DONE (#81, D030):** typed/directional edge model (`relations.py` + `graph_store.py` reverse `_in` index + intent-driven traversal); the eval's discrimination slices flipped headroom→victory; back-compat via untyped=`relates_to`-generic. `query_intent` direction is a recall-safe best-effort heuristic (7 cross-vendor gate iterations). **Step 1b — ✅ DONE (#84, D031):** `okf.py` `_LINK_RE` now captures the link anchor and `doc_to_memory_item` emits `okf_links` as `(anchor, target)` tuples (always-tuple — `okf.py` stays a pure parser, no `stores/` import; the store classifies the anchor), so real OKF links are typed end-to-end. Gated by `test_okf_to_graph.py` (9 tests, parses real OKF markdown; link-stripped anti-theater differential; RED→GREEN). **multi_hop — ✅ DONE (#85, D032):** configurable `GraphStore(max_depth=)` (default `_MAX_DEPTH`, byte-equiv); the eval's deep-config slice flips headroom→victory (`max_depth=3` recovers the depth-3 gold, links-only). Mechanism+eval only — **FOLLOW-UP (separate PR):** wire `max_depth` into the accuracy profile + a captained "does deeper traversal help real retrieval" check. **Then:** embedder seeding (semantic_seed), Neo4j durability.
+> **Step 1 — ✅ DONE (#81, D030):** typed/directional edge model (`relations.py` + `graph_store.py` reverse `_in` index + intent-driven traversal); the eval's discrimination slices flipped headroom→victory; back-compat via untyped=`relates_to`-generic. `query_intent` direction is a recall-safe best-effort heuristic (7 cross-vendor gate iterations). **Step 1b — ✅ DONE (#84, D031):** `okf.py` `_LINK_RE` now captures the link anchor and `doc_to_memory_item` emits `okf_links` as `(anchor, target)` tuples (always-tuple — `okf.py` stays a pure parser, no `stores/` import; the store classifies the anchor), so real OKF links are typed end-to-end. Gated by `test_okf_to_graph.py` (9 tests, parses real OKF markdown; link-stripped anti-theater differential; RED→GREEN). **multi_hop — ✅ DONE (#85, D032):** configurable `GraphStore(max_depth=)` (default `_MAX_DEPTH`, byte-equiv); the eval's deep-config slice flips headroom→victory (`max_depth=3` recovers the depth-3 gold, links-only). Mechanism+eval only. **Accuracy-profile wiring — ✅ DONE (#86, D033):** the cascade injects per-query `max_depth` into its graph stage; `accuracy_profile(graph_max_depth=3)` (PROVISIONAL — captained "does deeper help" deferred). **Then:** embedder seeding (semantic_seed — IN PROGRESS), Neo4j durability.
 
 0. **Instrument first — ✅ DONE (#75, D029).** `test_graph_retrieval_evals.py`, cloning the D008/D020 template (Case dataclass,
    slices, machine-asserted invariants, **blind multi-lens authorship → deterministic calibration** dropping

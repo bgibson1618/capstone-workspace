@@ -16,7 +16,7 @@ backends) + `eval/memeval/router.py`. Teammates: Keith @kmazanec (harness/OpenCo
 - **`~/projects/agent-memory-harness`** — the SHARED code repo. Brent's real deliverables live
   here; changes ship via small PRs on `stores/*` / `router/*` branches.
 - **`~/projects/capstone-workspace`** (this dir) — Brent's PRIVATE planning/evidence/scratch,
-  NOT in the shared repo. Holds: this `CONTEXT.md`, `DECISION_LOG.md` (D001–D019, the AI
+  NOT in the shared repo. Holds: this `CONTEXT.md`, `DECISION_LOG.md` (D001–D020, the AI
   suggested/accepted/changed/rejected log), `ROUTING_EVALS.md`, `TEAM_NOTES.md`, and `work/` (gitignored
   scratch: delegate run dirs + throwaway eval scripts). The agent file-memory (`memory/` + `MEMORY.md`)
   lives separately under `~/.claude/projects/-home-brent-gibson-projects-capstone-workspace/memory/`
@@ -83,27 +83,41 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
   Adapter **live-validated** (real 200-OK calls to Voyage; first key attempt 429'd on free-tier RPM →
   Brent fixed payment → 2000 RPM → clean run). **Finding:** the D008 fixture is too small + *lexical* to
   measure an embedder; the value can't be shown on it. (Throwaway scripts: `work/voyage_live_eval*.py`.)
-- **NEXT — semantic retrieval eval growth (per D019) — the single next task:** author paraphrase/synonym
-  retrieval cases (lexical hashing fails, meaning matches) → re-baseline hashing vs Voyage to actually
-  measure the embedder; OR run the real benchmarks (SWE-ContextBench/ContextBench). **Do not claim
-  Voyage's benefit until this exists.**
-- **THEN:**
-  - **PR3b-2** — `SemanticRouterClassifier` using `VoyageEmbedder` as its encoder + taxonomy exemplars
-    → routing bake-off vs rules (targets the 3 multilingual GAPs).
-  - **spaCy adapter** (optional, no key; install-heavy de/zh/fr models) — alt multilingual route.
-  - The **17 contested** routing labels stay measured; adjudicate in a separate pass.
-- **Resume:** **all PRs merged**; `main` @ `7ecd52d` (#41), local on `main`, clean. Pick up at the
-  **semantic retrieval eval growth (D019)**.
+- **Semantic retrieval eval (per D019) — MERGED as PR #44** (`stores/d019-semantic-retrieval-eval`):
+  `test_semantic_retrieval_evals.py` — 20 cases (15 semantic-divergence across synonym/paraphrase/
+  conceptual/cross-lingual/abstraction lenses + 5 lexical controls) over a 34-memory haystack. The
+  committed offline path proves **headroom, not victory**: divergence recall@5 **0.000** (hashing
+  misses gold in top-k), control recall@5 **1.000** (apparatus works) — both machine-asserted against
+  the real hashing path (anti-theater). Provenance: blind multi-lens Workflow → synthesizer → per-case
+  verify → deterministic offline calibration (dropped 12/27 generated divergence cases the hashing
+  embedder could already find). stdlib-only; no production code. Cross-vendor Codex gate PASS (concerns
+  remediated). The live hashing-vs-Voyage **measurement was captained (D020, DONE — see next bullet)** —
+  never in CI (offline guarantee). Finding: cross-lingual + conceptual queries defeat lexical matching
+  reliably; synonyms barely do (shared morphology).
+- **Captained D020 live run — DONE (DECISION_LOG D020):** ran hashing FLOOR vs real `voyage-3-large`
+  (dim 1024, doc/query asymmetry) over the new semantic fixture. **Result: divergence recall@5
+  0.000 → 1.000 (15/15 recovered), MRR 0.000 → 0.922; control 1.000 → 1.000 (no regression); all 5
+  cross-lingual recovered to rank 0.** The complete inverse of D019's lexical-fixture result — the
+  embedder's value was real all along; D019's fixture hid it. Voyage's benefit is now demonstrated on
+  an instrument whose cases are machine-proven beyond a lexical retriever. (Script: `work/voyage_semantic_eval_d020.py`.)
+- **NEXT — PR3b-2 (`SemanticRouterClassifier`):** learned routing classifier using `VoyageEmbedder` as
+  its encoder + taxonomy exemplars → routing bake-off vs rules. Targets the **3 multilingual routing
+  GAPs** — now de-risked by D020's 5/5 cross-lingual recovery (voyage-3-large maps es/fr/de → English
+  gold at rank 0). THEN: optional spaCy adapter; adjudicate the 17 contested routing labels; real
+  benchmarks (SWE-ContextBench/ContextBench); router↔harness integration with Keith.
+- **Resume:** `main` @ `b8c4181` (#44 merged), clean & synced. Embedder slice **complete + live-measured**
+  (D020: divergence recall@5 0.000 → 1.000). Pick up at **PR3b-2** (`SemanticRouterClassifier`, Voyage
+  encoder — the 3 multilingual routing GAPs, de-risked by D020). spaCy adapter + 17 contested labels after.
 
 ## How to verify (run from `~/projects/agent-memory-harness/eval`)
-- Smoke gate (the team's CI check): `python3 tests/test_smoke.py` → **73 passed / 0 failed / 1 skipped** as of 2026-06-21 (count grows as the team adds tests — the contract is 0 failed; was 67→71→73).
-- D008 retrieval/gate fixture: `python3 -m memeval.stores.tests.test_d008_evals` (report) · `... -m unittest ...` (now on `main`). Cascade tests: `test_d008_cascade`; profile matrix: `test_profile_matrix`; bake-off: `test_routing_bakeoff`; Voyage embedder: `test_embedders`.
+- Smoke gate (the team's CI check): `python3 tests/test_smoke.py` → **82 passed / 0 failed / 1 skipped** as of 2026-06-21 (count grows as the team adds tests / optional deps resolve — the contract is 0 failed; was 67→71→73→82).
+- D008 retrieval/gate fixture: `python3 -m memeval.stores.tests.test_d008_evals` (report) · `... -m unittest ...` (now on `main`). Cascade tests: `test_d008_cascade`; profile matrix: `test_profile_matrix`; bake-off: `test_routing_bakeoff`; Voyage embedder: `test_embedders`; semantic retrieval (PR #44, on branch): `test_semantic_retrieval_evals` (report: divergence recall@5 0.000 / control 1.000).
 - Brent's suites: `python3 -m unittest memeval.stores.tests.test_markdown_store memeval.stores.tests.test_sqlite_store memeval.stores.tests.test_graph_store memeval.stores.tests.test_router memeval.stores.tests.test_routing_evals`
 - Reproduce the routing number: `python3 -m memeval.stores.tests.test_routing_evals` → **28/31 = 90%** agreement on the blind hard cases.
 - Env: `python3` + `uv` (no `python`/`pip` on PATH). The offline path is zero-dependency.
 
 ## What's next (see Active work above for the live build state + the single next task)
-1. **Cascade / meta-index + profiles (D008/D016)** — *SHIPPED & merged* (PR1 #17 → PR3b-1 #41). The single next task is the **semantic retrieval eval growth (D019)**, then **PR3b-2** — see **Active work**. Brent's domain.
+1. **Cascade / meta-index + profiles + embedder (D008/D016/D019/D020)** — *SHIPPED & merged* (PR1 #17 → PR3b-1 #41 → semantic-retrieval eval #44, live-measured D020: divergence recall@5 0.000 → 1.000). The single next task is **PR3b-2** (`SemanticRouterClassifier`, Voyage encoder) — see **Active work**. Brent's domain.
 2. **Captained eval runs** — SWE-ContextBench + ContextBench (Brent's), on **real embeddings** + his own API key. Needs the deferred env setup (uv venv + Voyage/bge + ANN index). Run via the repo's GitHub Actions **Benchmark run** workflow (`.github/workflows/benchmark.yml`) on Brent's own key (repo secret `ANTHROPIC_API_KEY_BGIBSON1618`; $10 default budget) — see `collaborate.html` / `plan.md`. **Optional** — the build doesn't depend on it.
 3. **router↔harness integration** — coordinate the seam with Keith's harness. The router exposes `route(query) -> MemoryStore`, `classify(query) -> backend-name`, and `explain(query)` (scores + margin); the seam is Keith's primary agent calling `route()` (per the if/where-how split: the agent decides *if* to retrieve, the router decides *where/how*). No owner/branch/acceptance defined yet — coordinate with Keith.
 4. **Team-coordination items** — see `TEAM_NOTES.md`: (a) version-invariant (`architecture.md` vs the stores), (b) `project-plan.md` overstates shipped production pieces.

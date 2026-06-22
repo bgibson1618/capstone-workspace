@@ -61,9 +61,14 @@ path. Chosen sequence (historical, all done):
     quality lift is a captained run, and wiring it onto the default retrieval path is a follow-up.
   - **bge-m3 fallback embedder (PRD-6)** — still missing (an air-gapped open-source embedder behind the `embed=`
     seam; only Voyage + the hashing/Mock default ship). LOW — descope-or-build TBD.
-  - **Cross-backend read-orchestrator (PLAN-7)** — `route()` is single-best-first BY DESIGN (D003/D008/D009);
-    a recency×relevancy cross-backend rank + read-dedup is NOT built. Decide if v1 needs it or it's the
-    learned-router's job (D007). MED/LOW.
+  - **Cross-backend fusion / read-orchestrator (PLAN-7)** — ✅ **partially DONE (#68, D027):** a
+    cross-backend FUSION profile (RRF + score-norm) ships **opt-in** via `Consult2Config`/`fusion_profile`
+    (single-route stays the speed default). *Correction:* this was briefly mis-scoped as "single-best by
+    design" — the router is a **speed↔accuracy spectrum** (Brent's intent); fusion is a wanted accuracy
+    config, not descoped. Flat on graph-centric D008; value proven on complementary backends. **Still
+    open:** a real-store (markdown+graph+vector) complementarity fixture to pick RRF-vs-score; the
+    fusion→rerank ("accuracy+") tier; named presets (speed/balanced/accuracy/accuracy+); a recency×relevancy
+    ranking knob. MED.
 - **Doc-honesty (TEAM_NOTES#2)** — `stores/__init__.py` overstated ANN/Neo4j as shipped → **FIXED in
   PR #64** (rewritten to v1 reality + deferred seams). `project-plan.md` may still overstate (multi-owner
   shared doc — coordinate with the team). LOW.

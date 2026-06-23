@@ -23,8 +23,8 @@
 > truth; `path=None` byte-equiv; recompute embeddings on load; **atomic** write parse→embed→persist→index +
 > `_persist` rollback; `close()`/post-close fail-loud). (2) **DELETE — ✅ DONE (#93/D036, OPEN; internal-gate 0 +
 > Codex R1/R2 PASS):** solo-additive/duck-typed `delete(item_id)` on the 3 backends (durable; graph atomic +
-> mirror-preserving) + `Router`/`RouterStore` fan-out (idempotent, returns count); the `[CONTRACT]` PR to add
-> `delete` to the frozen `MemoryStore` protocol (all 4 owners) is the follow-up. (3) **E2E CRUD — ✅ DONE (#95/D037, OPEN; Codex R1→fold→R2 PASS):**
+> mirror-preserving) + `Router`/`RouterStore` fan-out (idempotent); **PLUS the `[CONTRACT]` PR (#99/D038,
+> 4-owner, Codex R1→R4 PASS) that promotes `delete` to the frozen `MemoryStore` protocol** — DONE. (3) **E2E CRUD — ✅ DONE (#95/D037, OPEN; Codex R1→fold→R2 PASS):**
 > a real RouterStore over all 3 durable backends — Create→Read→Update→Delete→restart-from-disk→confirm, per-backend
 > + anti-theater. **The durability→delete→e2e arc is COMPLETE.** (4) **Neo4j behind `uri=` — remaining follow-up:**
 > FakeBoltDriver mock (Cypher/`as_of`/`LIMIT`) + a captained id-set/order parity run (proven a no-op on accuracy).

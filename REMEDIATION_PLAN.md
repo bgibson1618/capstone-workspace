@@ -7,23 +7,34 @@
 > **write path** and **harness integration**. This file is the durable backlog; `/pickup` should treat
 > it as the active priority until archived.
 
-## 🛠 BACKEND DURABILITY HARDENING ARC (⭐ NOW NEXT — the Neo4j/graph thread SHIPPED 2026-06-23 via PR #111/D041; Brent)
+## 🛠 BACKEND DURABILITY HARDENING ARC — ✅ DONE & MERGE-READY (PR #117 OPEN, D042, 2026-06-23; Brent merges)
 > Source: the `store-durability-audit` Workflow (2026-06-23, 52 agents, adversarially verified + empirically
-> crash-tested). **Full findings: `BACKEND_DURABILITY_AUDIT.md`. Decision: `DECISION_LOG.md` D040** (+ D039 Bolt).
-> **Verdict: both durable backends are `needs-hardening`; markdown/OKF is effectively POC persistence.** Both are
-> LIVE on the product path (every `remember` fans out to all backends; Daydreamer writes the same dir
-> cross-process). Brent's call: do NOT deviate from Neo4j now — record + circle back the moment the graph store ships.
-> Eval-first: each step gets a write→crash/concurrent-write→recover eval BEFORE code (the markdown store has NO
-> crash/concurrency test today — that instrument is step 0).
+> crash-tested). **Full findings: `BACKEND_DURABILITY_AUDIT.md`. Decision: `DECISION_LOG.md` D040** (+ D039 Bolt) → **arc shipped as D042.**
+> **Original verdict: both durable backends `needs-hardening`; markdown/OKF effectively POC persistence.** Both LIVE on
+> the product path (every `remember` fans out to all backends; Daydreamer writes the same dir cross-process). Built
+> eval-first immediately after the graph thread shipped (D041), per Brent's circle-back call.
 >
-> **Priority order (HIGHs first; primitives `tmp.replace`/`fcntl.flock` already exist in `dreaming/_state.py`):**
-> 1. **markdown/OKF HIGH-1 — atomic write:** `okf.py:400` (+ `export_bundle` 301/310/317/326) `write_text` → `tmp.replace`+fsync (port `_write_sidecar_atomic`). *Non-atomic write loses PRIOR data on a torn update.*
-> 2. **markdown/OKF HIGH-2 — cross-process lock + read-refresh:** `fcntl.flock` around write/delete + an mtime-based reload seam for get/search/all + the inverted index. *No lock → clobber; frozen RAM mirror → stale/split-brain recall.*
-> 3. **markdown/OKF HIGH-3 — delete fast-path:** `unlink(_doc_relpath(item))` + `break`; rglob only for foreign filenames. *O(N) full-bundle rescan per delete → quadratic under dedup bursts.*
-> 4. **sqlite — thread-safe connection:** `check_same_thread=False` + a serializing `threading.Lock` (or per-thread conn). *Deterministic crash if handed to a thread pool — the harness's own `run_agent(workers>1)` path.*
-> 5. **sqlite — `write()` rollback:** match `delete()`'s `try/except: rollback` (`sqlite_store.py:182-191`).
-> 6. **markdown/OKF MED tail (queue; do if dedup/auto-merge gets enabled or scope allows):** autoload corrupt-file guard/quarantine (`okf.py:344-352`); slug-collision hash-suffix (`okf.py:277-280`); type-change orphan-resurrection unlink-on-write (`okf.py:396-400`); eager-load/duplicate-postings (persist/lazy index).
-> 7. **sqlite — MED/LOW perf cleanup:** score on `(id, vector)` tuples, materialize only k survivors (`sqlite_store.py:216-217`) — a pre-ANN constant-factor win (the real scaling fix is the deferred D013 ANN swap).
+> **✅ SHIPPED (PR #117 `stores/backend-durability-hardening`, OPEN/ready for Brent to merge; gate journey: cross-vendor
+> Codex R1 FAIL → R2 FAIL → R3 PASS — each round caught a real cross-process WRITE-coherence bug, refresh-seam-incomplete
+> → mtime-race → writer-side generation-stale-ack — then a CodeRabbit fold of 6 quick-wins). Instrument: `test_backend_durability.py`
+> (16 tests). Gates: durability 16/16; full stores `discover` 340 passed / 3 skipped; smoke 95/0/1. No `[CONTRACT]` change:**
+> 1. **markdown/OKF HIGH-1 — atomic write: DONE** (`tmp.replace`+fsync, **per-call temp** — torn update no longer loses prior data).
+> 2. **markdown/OKF HIGH-2 — cross-process lock + read-refresh: DONE** (`flock` + a **persisted generation-counter** with
+>    **reconcile-under-lock on write/delete/flush** — read-your-peers'-writes coherence — + a read-refresh seam; the mtime
+>    approach was tried and rejected at gate R2 because mtime granularity can't detect a same-tick peer write).
+> 3. **markdown/OKF HIGH-3 — delete fast-path: DONE** (O(1) `unlink` of the known relpath; rglob only for foreign filenames).
+> 4. **sqlite — thread-safe connection: DONE** (serialized under the lock — the harness's `run_agent(workers>1)` path).
+> 5. **sqlite — `write()` rollback + `close()`/lifecycle under the lock: DONE.** **graph — thread-safe `path=` mirror: DONE.**
+> 6. **markdown/OKF MED tail — autoload corrupt-file guard: DONE** (catches parse/convert errors). **Still deferred** (below).
+>
+> **🔭 DEFERRED hardening follow-ups (out of #117's scope — tracked, queued; D042):**
+> - **GraphStore cross-process READ freshness** — the SAME generation-counter coherence class the markdown store now has; a
+>   **pre-existing residual, NOT a regression** this arc introduced (the graph `path=` mirror is thread-safe but not yet
+>   cross-process-fresh). Apply the same persisted-generation-counter pattern when revisited.
+> - **markdown MEDs:** slug-collision hash-suffix (`okf.py:277-280`); type-change orphan-resurrection unlink-on-write
+>   (`okf.py:396-400`); persisted/lazy inverted index (eager-load/duplicate-postings).
+> - **sqlite MED/LOW perf:** score on `(id, vector)` tuples, materialize only k survivors (`sqlite_store.py`) — a pre-ANN
+>   constant-factor win (the real scaling fix is the deferred D013 ANN swap).
 
 ## WRITE-PATH ARC — ✅ COMPLETE & MERGED (RouterStore now adopted on the live plugin path, #76; the remaining live gate is the captained benchmark run — see the ⭐ section above)
 Brent's directive: *"not done until the router is as accurate as we can make it on both writes and
@@ -50,7 +61,8 @@ path. Chosen sequence (historical, all done):
   through the same seam (#79). So **`route_write`/`Router.write` (write-routing #56 + dedup #57) are now CALLED on
   the product path** — the "writes bypass the router / stores never exercised" framing that drove this section is
   **obsolete.** Storage paths (reference): under `$MEMORY_STORE` (default `${CLAUDE_PROJECT_DIR}/.cookbook-memory`)
-  — vectors=`memory.db`, markdown=`markdown/`, graph=in-memory (NOT persisted — the durability arc closes this).
+  — vectors=`memory.db`, markdown=`markdown/`, graph=`graph.db` (NOW persisted — Keith wired `contract.py:100` to
+  `GraphStore(path=…/graph.db)` this session; the durability arc + this wiring closed the gap, verified end-to-end).
 - **✅ RouterStore adapter (#66 / D025, solo):** the `MemoryStore` facade over the Router (`write→Router.write`,
   `search→route().search`, `get`/`all` union+dedup), eval-gated (13 tests, Codex clean) — exactly what the plugin
   adopted in #76.
@@ -101,13 +113,24 @@ path. Chosen sequence (historical, all done):
   accuracy + #92 durability + #93 delete + #95 e2e CRUD + #99/#101 delete-`[CONTRACT]`; D029–D038; see
   `GRAPH_STORE_SCOPE.md`).** The typed/directional edge model + multi_hop `max_depth` + accuracy-profile depth +
   the `embed=` semantic-seed seam + a `path=` SQLite durability seam + delete across all backends + an e2e CRUD
-  test (survives restart) + `delete` on the `MemoryStore` protocol all landed eval-first + gated. **Only remaining
-  in this thread: Neo4j behind `uri=`** (FakeBoltDriver mock + captained parity, proven a no-op on accuracy) +
-  the cross-team plugin `build_store` graph-path line (Keith — makes the LIVE plugin graph durable).
+  test (survives restart) + `delete` on the `MemoryStore` protocol all landed eval-first + gated. **Neo4j Phase-A
+  parity floor — ✅ SHIPPED (PR #111, D041; Bolt per D039):** `Neo4jGraphStore` behind `uri=` reproduces the
+  in-memory id-set+order exactly (FakeBoltDriver mock + opt-in `NEO4J_TEST_URI` live test). **The whole solo graph
+  thread is now DONE.** Remaining graph follow-up: **Neo4j Phase B** (native typed graph, D043, PARKED — gated on
+  the captained live `NEO4J_TEST_URI` run). The cross-team plugin `build_store` graph-path wiring (Keith) is **✅ DONE
+  this session** (`contract.py:100` → `GraphStore(path=…/graph.db)`; the LIVE plugin graph is now durable, verified end-to-end).
 - **ANN index** (HNSW/FAISS) — brute-force cosine v1 (D013). **Reranker** (Voyage/Cohere). **bge-m3**
   air-gapped fallback. **consult-2 / RRF** (Consult2Config declared, unused). **north-star** learned
   router (D007). **17 contested labels** adjudication. **Package extraction** (ADR-eval-001; needs
   CODEOWNERS sign-off). **Persistence trust policy** (retention/TTL/encryption — ADR-P9, storage owner).
+- **Neo4j Phase B** (D043, PARKED) — a `native=True` mode INSIDE `Neo4jGraphStore`: materialize the native
+  `[:REL]` graph from the persisted `okf_links` SSOT (**`MATCH` endpoints, never `MERGE`** — the D041 R1 bug),
+  native Cypher/GDS search; the transient-delegation path stays the default + regression baseline. **HARD
+  prereq = the captained live `NEO4J_TEST_URI` run.** Scoped in `GRAPH_STORE_SCOPE.md`.
+- **FalkorDB-as-a-backend — REJECTED (D043);** kept ONLY as a possible CI integration harness. The draft
+  `FalkorGraphStore` re-introduced D041's fixed placeholder + seq bugs; `falkordblite` is a managed
+  **subprocess** (not in-process), Python 3.12+/Linux-macOS/libomp (NOT zero-dep stdlib). Research:
+  `docs/falkordb_comparison.md`, `docs/local_stores_performance.md` (both verified PARTIAL).
 
 ## Status
 - 2026-06-21: audit run; write-path arc chosen + started. 2026-06-22: **all solo write-path PRs MERGED.**
@@ -125,13 +148,31 @@ path. Chosen sequence (historical, all done):
   - **Graph arc COMPLETE & MERGED (2026-06-23):** semantic_seed (#89/D034) + durability `path=` SQLite seam
     (#92/D035) + delete across all backends (#93/D036) + e2e CRUD across all 3 durable backends (#95/D037) +
     `delete` on the `MemoryStore` protocol (#99 + #101/D038).
-  - **Remaining:** a **captained large-benchmark run** (real embedder — the headline metrics gate) + the
-    cross-team plugin `build_store` graph-path line (Keith — makes the LIVE plugin graph durable) +
-    version-highest-wins ownership + MemoryFramework wire-or-retire.
+  - **Remaining:** a **captained large-benchmark run** (real embedder — the headline metrics gate) +
+    version-highest-wins ownership + MemoryFramework wire-or-retire. *(The cross-team plugin `build_store`
+    graph-path wiring — Keith — landed 2026-06-23: `contract.py:100` → `GraphStore(path=…/graph.db)`; LIVE plugin
+    graph now durable, verified end-to-end.)*
 - **2026-06-23: backend durability audit run** (`store-durability-audit` Workflow) → **Backend Durability
-  Hardening Arc** added at the top (queued — execute right after the Neo4j/graph thread). Both durable
-  backends `needs-hardening`; markdown/OKF effectively POC persistence. Full findings:
-  `BACKEND_DURABILITY_AUDIT.md`; decisions D039 (Bolt) + D040 (audit/arc). **Neo4j seam transport = Bolt**
-  (the `neo4j` driver), decided this session — the seam is a production-load backend, not parity-only.
-- Archive this file once the cross-team items + the **Backend Durability Hardening Arc** + the menu
+  Hardening Arc** added at the top. Both durable backends `needs-hardening`; markdown/OKF effectively POC
+  persistence. Full findings: `BACKEND_DURABILITY_AUDIT.md`; decisions D039 (Bolt) + D040 (audit/arc).
+- **2026-06-23: Neo4j Phase-A parity floor — DONE (PR #111, D041)** — the last solo graph thread. The
+  durability arc became now-next, and shipped same-session.
+- **2026-06-23: Backend Durability Hardening Arc — DONE & MERGE-READY (PR #117, D042, OPEN; Brent merges).**
+  markdown/OKF made production-durable (atomic write + cross-process flock + persisted generation-counter
+  w/ reconcile-under-lock + O(1) delete + corrupt-file guard); sqlite/graph thread-safe. Gate: Codex
+  R1 FAIL→R2 FAIL→R3 PASS + CodeRabbit fold. `test_backend_durability.py` (16); durability 16/16, stores
+  340/3-skipped, smoke 95/0/1. **Deferred follow-ups recorded** (GraphStore cross-process read freshness —
+  a pre-existing residual, not a regression — + markdown MEDs).
+- **2026-06-23: research + architecture-reconcile Workflow — DONE (D043).** `docs/falkordb_comparison.md`
+  + `docs/local_stores_performance.md` verified (both PARTIAL — Falkor draft re-introduced D041's fixed bugs
+  + is subprocess/not-stdlib → CI harness only; FTS5-cache doesn't fix durability, validating the D042
+  direction). 8 backend-arch drifts → 7 storage ADRs (ADR-storage-003..009, **PR #118 OPEN/ready to merge**).
+  architecture.md reconciled on LOCAL `docs/architecture-reconcile` (01562b3, UNPUSHED — `[CONTRACT]`, a
+  team-meeting governance call). Neo4j **Phase-B plan drafted + PARKED** (gated on the captained live run).
+- **Open now (Brent / captained / team):** (1) Brent merges **#117** + **#118**; (2) the deferred hardening
+  follow-ups; (3) the **captained live `NEO4J_TEST_URI` run** (Cypher validity; HARD prereq for Phase B);
+  (4) **Neo4j Phase B**; (5) architecture.md reconciliation → team meeting → push/merge. **⭐ Headline gate:
+  the captained large-benchmark run.** *(Keith's plugin `build_store` graph-path wiring is DONE — `contract.py:100`;
+  the live plugin graph is durable. The only remaining graph-durability item is the captained live `NEO4J_TEST_URI` run.)*
+- Archive this file once the cross-team items + the deferred hardening follow-ups + Neo4j Phase B + the menu
   (benchmarks / contested labels / perf-test / closeout) are closed or explicitly descoped.

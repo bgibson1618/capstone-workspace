@@ -32,7 +32,10 @@
 > persisting NODES + `okf_links` (the edge SSOT) ONLY. The native typed `[:REL]` graph was DROPPED from Phase A
 > (a per-edge `MERGE` created read-visible placeholder nodes on real Neo4j) → **deferred to Phase B (below).**
 > Committed `FakeBoltDriver` (offline) + an opt-in `NEO4J_TEST_URI` live test (**captained-validation-pending**).
-> Cross-team/pending: the plugin `build_store` graph-path wiring (Keith — makes the LIVE plugin graph durable).
+> Cross-team: the plugin `build_store` graph-path wiring (Keith) is **✅ DONE (2026-06-23)** — `contract.py:100` now builds
+> `GraphStore(path=str(root / "graph.db"))`, so the LIVE plugin graph persists under `$MEMORY_STORE` (verified end-to-end:
+> `build_store` creates `graph.db`, a fresh store reloads nodes after restart, a typed edge survives). The only remaining
+> graph-durability item is the captained live `NEO4J_TEST_URI` run (the real-Neo4j step, separate).
 
 > **⚠️ FRAMING UPDATE (D039/D041 — A toward B; supersedes the "Neo4j is a no-op on accuracy" line below).** The
 > "no-op on accuracy" claim is the **Phase-A FLOOR**, not the ceiling: parity is the *acceptance test* that the port
@@ -154,11 +157,16 @@ templates: `stores/tests/test_d008_evals.py`, `test_semantic_retrieval_evals.py`
 
 ---
 
-## PHASE B — Neo4j-native accuracy (the upside the parity floor guards) — SCOPED, not built
-> Set up 2026-06-23 when Phase A (PR #111, D041) shipped. Phase A proved the port is FAITHFUL (id-set+order
-> parity, no-op by design). Phase B is where Neo4j **earns accuracy the in-memory store structurally can't** —
-> captained-measured (D019/D020 lesson: the real number is out-of-band), with the Phase-A parity eval as the
-> regression guard. Same eval-first discipline. Brent sets final direction; this is the starting scope.
+## PHASE B — Neo4j-native accuracy (the upside the parity floor guards) — SCOPED + PARKED, not built
+> Set up 2026-06-23 when Phase A (PR #111, D041) shipped; refined + PARKED 2026-06-23 by the D043
+> research/architecture Workflow. Phase A proved the port is FAITHFUL (id-set+order parity, no-op by design).
+> Phase B is where Neo4j **earns accuracy the in-memory store structurally can't** — captained-measured
+> (D019/D020 lesson: the real number is out-of-band), with the Phase-A parity eval as the regression guard.
+> Same eval-first discipline. **D043 refinement:** implement Phase B as a **`native=True` mode INSIDE
+> `Neo4jGraphStore`** — the transient-delegation path (Phase A) stays the DEFAULT + the regression baseline, and
+> `native=True` switches on the native materialized graph. **HARD PREREQUISITE = the captained live
+> `NEO4J_TEST_URI` run** (Cypher validity vs real Neo4j) must pass first. Brent sets final direction; this is the
+> starting scope.
 
 **The core idea.** Phase-A reads delegate to a transient in-memory `GraphStore` (lexical Jaccard seed → BFS →
 `0.5^hops` decay). Phase B replaces that with **native Neo4j retrieval** that the stdlib path can't do:

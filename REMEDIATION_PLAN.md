@@ -7,6 +7,24 @@
 > **write path** and **harness integration**. This file is the durable backlog; `/pickup` should treat
 > it as the active priority until archived.
 
+## 🛠 BACKEND DURABILITY HARDENING ARC (⭐ NOW NEXT — the Neo4j/graph thread SHIPPED 2026-06-23 via PR #111/D041; Brent)
+> Source: the `store-durability-audit` Workflow (2026-06-23, 52 agents, adversarially verified + empirically
+> crash-tested). **Full findings: `BACKEND_DURABILITY_AUDIT.md`. Decision: `DECISION_LOG.md` D040** (+ D039 Bolt).
+> **Verdict: both durable backends are `needs-hardening`; markdown/OKF is effectively POC persistence.** Both are
+> LIVE on the product path (every `remember` fans out to all backends; Daydreamer writes the same dir
+> cross-process). Brent's call: do NOT deviate from Neo4j now — record + circle back the moment the graph store ships.
+> Eval-first: each step gets a write→crash/concurrent-write→recover eval BEFORE code (the markdown store has NO
+> crash/concurrency test today — that instrument is step 0).
+>
+> **Priority order (HIGHs first; primitives `tmp.replace`/`fcntl.flock` already exist in `dreaming/_state.py`):**
+> 1. **markdown/OKF HIGH-1 — atomic write:** `okf.py:400` (+ `export_bundle` 301/310/317/326) `write_text` → `tmp.replace`+fsync (port `_write_sidecar_atomic`). *Non-atomic write loses PRIOR data on a torn update.*
+> 2. **markdown/OKF HIGH-2 — cross-process lock + read-refresh:** `fcntl.flock` around write/delete + an mtime-based reload seam for get/search/all + the inverted index. *No lock → clobber; frozen RAM mirror → stale/split-brain recall.*
+> 3. **markdown/OKF HIGH-3 — delete fast-path:** `unlink(_doc_relpath(item))` + `break`; rglob only for foreign filenames. *O(N) full-bundle rescan per delete → quadratic under dedup bursts.*
+> 4. **sqlite — thread-safe connection:** `check_same_thread=False` + a serializing `threading.Lock` (or per-thread conn). *Deterministic crash if handed to a thread pool — the harness's own `run_agent(workers>1)` path.*
+> 5. **sqlite — `write()` rollback:** match `delete()`'s `try/except: rollback` (`sqlite_store.py:182-191`).
+> 6. **markdown/OKF MED tail (queue; do if dedup/auto-merge gets enabled or scope allows):** autoload corrupt-file guard/quarantine (`okf.py:344-352`); slug-collision hash-suffix (`okf.py:277-280`); type-change orphan-resurrection unlink-on-write (`okf.py:396-400`); eager-load/duplicate-postings (persist/lazy index).
+> 7. **sqlite — MED/LOW perf cleanup:** score on `(id, vector)` tuples, materialize only k survivors (`sqlite_store.py:216-217`) — a pre-ANN constant-factor win (the real scaling fix is the deferred D013 ANN swap).
+
 ## WRITE-PATH ARC — ✅ COMPLETE & MERGED (RouterStore now adopted on the live plugin path, #76; the remaining live gate is the captained benchmark run — see the ⭐ section above)
 Brent's directive: *"not done until the router is as accurate as we can make it on both writes and
 retrievals."* All three steps below shipped + merged (#52/#55 WAL, #56 write-routing, #57 dedup — see Status).
@@ -110,5 +128,10 @@ path. Chosen sequence (historical, all done):
   - **Remaining:** a **captained large-benchmark run** (real embedder — the headline metrics gate) + the
     cross-team plugin `build_store` graph-path line (Keith — makes the LIVE plugin graph durable) +
     version-highest-wins ownership + MemoryFramework wire-or-retire.
-- Archive this file once the cross-team items + the menu (benchmarks / contested labels / perf-test /
-  closeout) are closed or explicitly descoped.
+- **2026-06-23: backend durability audit run** (`store-durability-audit` Workflow) → **Backend Durability
+  Hardening Arc** added at the top (queued — execute right after the Neo4j/graph thread). Both durable
+  backends `needs-hardening`; markdown/OKF effectively POC persistence. Full findings:
+  `BACKEND_DURABILITY_AUDIT.md`; decisions D039 (Bolt) + D040 (audit/arc). **Neo4j seam transport = Bolt**
+  (the `neo4j` driver), decided this session — the seam is a production-load backend, not parity-only.
+- Archive this file once the cross-team items + the **Backend Durability Hardening Arc** + the menu
+  (benchmarks / contested labels / perf-test / closeout) are closed or explicitly descoped.

@@ -26,10 +26,20 @@
 > mirror-preserving) + `Router`/`RouterStore` fan-out (idempotent); **PLUS the `[CONTRACT]` PR (#99/D038,
 > 4-owner, Codex R1→R4 PASS) that promotes `delete` to the frozen `MemoryStore` protocol** — DONE. (3) **E2E CRUD — ✅ DONE (#95/D037, OPEN; Codex R1→fold→R2 PASS):**
 > a real RouterStore over all 3 durable backends — Create→Read→Update→Delete→restart-from-disk→confirm, per-backend
-> + anti-theater. **The durability→delete→e2e arc is COMPLETE.** (4) **Neo4j behind `uri=` — remaining follow-up:**
-> FakeBoltDriver mock (Cypher/`as_of`/`LIMIT`) + a captained id-set/order parity run (proven a no-op on accuracy).
-> Plus: the `[CONTRACT]` delete-on-protocol PR (4 owners) and the cross-team plugin `build_store` graph-path
-> wiring (Keith — makes the LIVE plugin graph durable).**
+> + anti-theater. **The durability→delete→e2e arc is COMPLETE.** (4) **Neo4j Phase-A parity floor — ✅ DONE (PR #111,
+> D041; transport = Bolt per D039; Codex R1 FAIL→fold→R2 PASS):** `Neo4jGraphStore` behind `uri=` reproduces the
+> in-memory store's id-set+order EXACTLY (parity by construction — `search` delegates to a transient `GraphStore`),
+> persisting NODES + `okf_links` (the edge SSOT) ONLY. The native typed `[:REL]` graph was DROPPED from Phase A
+> (a per-edge `MERGE` created read-visible placeholder nodes on real Neo4j) → **deferred to Phase B (below).**
+> Committed `FakeBoltDriver` (offline) + an opt-in `NEO4J_TEST_URI` live test (**captained-validation-pending**).
+> Cross-team/pending: the plugin `build_store` graph-path wiring (Keith — makes the LIVE plugin graph durable).
+
+> **⚠️ FRAMING UPDATE (D039/D041 — A toward B; supersedes the "Neo4j is a no-op on accuracy" line below).** The
+> "no-op on accuracy" claim is the **Phase-A FLOOR**, not the ceiling: parity is the *acceptance test* that the port
+> is faithful (you can't tell a real gain from a silent bug without a baseline) + a CI necessity (Neo4j-only gains
+> can't run in CI). **Phase A (PR #111) = a no-op BY DESIGN. Phase B = the accuracy upside** (native typed graph +
+> GDS/Cypher traversal — see the new "Phase B" section at the bottom). And per D039 the seam is a **production-load
+> backend** (Bolt driver, called on every read/write), not a parity-only artifact.
 
 ## The core call (panel unanimous)
 **Relational-retrieval ACCURACY lives in the edge model + traversal — fully testable in-memory,
@@ -139,4 +149,37 @@ shipping Neo4j first delivers operational cost with zero measured accuracy gain 
 `eval/memeval/stores/graph_store.py` · `eval/memeval/okf.py` · `eval/memeval/router.py` ·
 `eval/memeval/stores/embedders.py` · `eval/memeval/stores/sqlite_store.py` ·
 templates: `stores/tests/test_d008_evals.py`, `test_semantic_retrieval_evals.py`, `test_embedders.py` ·
-**new:** `eval/memeval/stores/tests/test_graph_retrieval_evals.py`
+**new:** `eval/memeval/stores/tests/test_graph_retrieval_evals.py` · `stores/neo4j_store.py` (Phase A) ·
+`stores/tests/test_neo4j_parity.py` · `stores/tests/test_neo4j_live_parity.py`
+
+---
+
+## PHASE B — Neo4j-native accuracy (the upside the parity floor guards) — SCOPED, not built
+> Set up 2026-06-23 when Phase A (PR #111, D041) shipped. Phase A proved the port is FAITHFUL (id-set+order
+> parity, no-op by design). Phase B is where Neo4j **earns accuracy the in-memory store structurally can't** —
+> captained-measured (D019/D020 lesson: the real number is out-of-band), with the Phase-A parity eval as the
+> regression guard. Same eval-first discipline. Brent sets final direction; this is the starting scope.
+
+**The core idea.** Phase-A reads delegate to a transient in-memory `GraphStore` (lexical Jaccard seed → BFS →
+`0.5^hops` decay). Phase B replaces that with **native Neo4j retrieval** that the stdlib path can't do:
+1. **Materialize the native typed `[:REL {rel_type}]` graph** from the persisted `okf_links` SSOT — in ONE
+   consistent pass (every node's full link set is on disk). **`MATCH` existing endpoints; NEVER `MERGE` a
+   target** (that is the Phase-A R1 placeholder bug). A permanently-dangling `okf_links` target yields no
+   relationship (mirrors the in-memory store leaving an edge to an absent node unresolved).
+2. **Native Cypher path-traversal** keyed on `rel_type`/direction (variable-length `[:REL*1..d]` patterns) —
+   replaces the Python BFS; the `_TRAVERSAL` direction model (`relations.py`) ports to Cypher.
+3. **GDS scoring** — Personalized-PageRank seeding (importance-weighted, not flat Jaccard), node-similarity,
+   weighted shortest paths — the relational-retrieval gains the flat `0.5^hops` decay can't express.
+4. **Native vector index** (Neo4j 5.x) — vector-seed by meaning at scale + graph-expand, the indexed form of
+   the D034 hybrid seed.
+
+**Eval-first (captained).** Mirror D020: a divergence fixture the in-memory baseline CAN'T solve (where PPR /
+weighted paths / vector-seed beat lexical-seed + flat decay), measured live against real Neo4j + GDS — proving
+Phase B BEATS the parity floor (not just matches it). The committed `test_neo4j_parity.py` stays the
+no-regression guard (Phase B must not break id-set parity on the cases where the in-memory store is correct).
+
+**Risks / open questions (resolve when building):** Cypher-vs-Python float-order divergence (force the tie-break
+tuple); GDS availability/licensing on the target Neo4j; does deeper/weighted traversal actually help on real
+workloads (the D032/D033 "does deeper help" question, now captained-measurable); the `materialize` trigger
+(on-write incremental vs a batch rebuild from the okf_links SSOT). **Gate: the captained Phase-A live
+`NEO4J_TEST_URI` run (Cypher validity vs real Neo4j) is a prerequisite — it must pass before Phase B builds on it.**

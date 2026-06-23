@@ -38,14 +38,19 @@ the in-memory numbers (proven a no-op on accuracy), not improve them.** Building
 hardest engineering on the part that moves no metric and asks reviewers to trust a DB they can't run in
 CI — inverting the eval-first ethos. (REMEDIATION_PLAN already says "Neo4j is infra, not automatic accuracy.")
 
-## Current state (verified)
+## Starting state (the v1 store this plan began from — NOW SUPERSEDED)
+> ⚠️ **Historical.** The paragraph below describes the PRE-plan v1 store, kept for the plan's rationale. It
+> is **no longer current** — see the STATUS block at the top: Steps 1/1b made edges **typed + directional**
+> (`relations.py` + `okf.py` anchor capture), #92 added the **`path=` SQLite durability seam**, #93/#99/#101
+> added **`delete`** (now on the `MemoryStore` protocol), and the graph-retrieval eval shipped at Step 0 (#75).
+>
 In-memory stdlib `graph_store.py`: nodes=memories; `metadata["okf_links"]`=edges, **untyped + undirected**
 (every edge runs both ways); search = seed by query-token Jaccard → undirected BFS depth 2, score
 `seed_overlap * 0.5**hops` → top-k; `as_of` honored; link targets resolved by a basename heuristic
 (`_link_id`, assumes id==slug); `_neighbors` does an O(V*E) in-edge scan; `uri=` Neo4j seam exists but is
 **never used**. No graph-retrieval eval exists.
 
-## Three failure modes to attack (each pinned to source)
+## Three failure modes to attack (each pinned to source) — ALL now addressed (see STATUS)
 1. **Silent edge mis-resolution** — `graph_store.py:51-59` `_link_id` basename heuristic → on a referential
    Neo4j backend this becomes dropped/wrong edges. Fix: resolve targets via `x_item_id` (`okf.py:48,203,226`)
    reusing the router's `_identity_index`/`_norm_identity` (`router.py:537-565`) — the same resolver the D008

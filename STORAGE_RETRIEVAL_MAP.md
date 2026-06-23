@@ -79,23 +79,25 @@ flowchart TD
         IM["InMemoryStore (RAM)<br/>harness.py:165"]
     end
 
-    PR ==>|"markdown ONLY,<br/>no router"| MD
-    NR ==>|"default store"| IM
-    NR -.->|"only if store= injected<br/>(nothing injects today)"| MD
+    PR ==>|"routed via RouterStore (#76):<br/>dedup + base_all fan-out"| MD
+    PR ==> VEC
+    PR ==> GR
+    NR ==>|"RouterStore when injected (D025)"| MD
+    NR -.->|"bare default"| IM
 
-    RW -.->|"base_all = base+vec+graph<br/>BUILT-NOT-WIRED"| MD
-    RW -.-> VEC
-    RW -.-> GR
-    RS -.->|"adapts Router.write<br/>BUILT-NOT-WIRED (#66)"| RW
+    RS ==>|"build_store returns this;<br/>plugin + dreaming consume (#76)"| RW
+    RW ==>|"base_all = markdown+vectors+graph"| MD
+    RW ==> VEC
+    RW ==> GR
 
     REC ==> ROUTE
-    ROUTE ==>|"speed profile (default):<br/>SINGLE best backend"| MD
+    ROUTE ==>|"default profile = fusion (offline) / accuracy (with key);<br/>one backend per query"| MD
     ROUTE ==> VEC
     ROUTE ==> GR
-    ROUTE -.->|"accuracy profile:<br/>graph->vector cascade<br/>router.py:611 (no caller)"| GR
-    ROUTE -.->|"fusion profile: RRF/score<br/>across backends router.py:761<br/>IN-FLIGHT, no caller"| VEC
+    ROUTE ==>|"accuracy profile (auto when VOYAGE_API_KEY):<br/>graph->vector cascade (#76)"| GR
+    ROUTE ==>|"fusion profile (default offline):<br/>RRF/score across backends (#68 merged)"| VEC
 
-    FW -.->|"stub: would route<br/>to Brent's backends"| ROUTE
+    FW -.->|"stub (NotImplementedError);<br/>live path bypasses it via build_store"| ROUTE
 
     MD --> DISK1[("disk: markdown/&lt;type&gt;/&lt;id&gt;.md<br/>okf.py:274,392")]
     VEC --> DISK2[("disk: memory.db SQLite/WAL<br/>client.py:77, sqlite_store.py:151")]
@@ -106,6 +108,10 @@ flowchart TD
 ---
 
 ## ASCII fallback
+
+> ⚠️ **SUPERSEDED snapshot (pre-#76)** — the corrected current flow is the Mermaid above + the "one fact"
+> section + DECISION_LOG D025/D034–D038. The block below is the original markdown-only / BUILT-NOT-WIRED
+> snapshot, kept only as a historical fallback; do NOT read its status tags as current.
 
 ```
 ================================ WRITE PATHS ================================

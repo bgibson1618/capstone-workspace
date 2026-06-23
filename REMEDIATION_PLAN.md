@@ -100,10 +100,15 @@ path. Chosen sequence (historical, all done):
     can't separate near-dups from distinct-but-similar → false-merge = data loss; real-embedder-gated;
     Codex gate PASS).
   - Step 3b version-highest-wins: **DEFERRED — cross-team** (per-store vs dreaming-layer ownership, TEAM_NOTES#1).
-  - **Solo write-path work COMPLETE + write-routing now LIVE in the eval pipeline (RouterStore #66, D025):**
-    a `MemoryStore` adapter over the Router; routed writes run end-to-end through the #63 native pipeline solo
-    (`WriteReceipt` proves 3-backend fan-out; Codex gate clean). Remaining is **cross-team (Keith):** adopt
-    `RouterStore` at the plugin `_Engine.remember` + `MemoryFramework` stub sites (de-risked) + a captained
-    large-benchmark run (real embedder) + version-highest-wins ownership.
+  - **Solo write-path work COMPLETE; RouterStore (#66, D025) ADOPTED on the live plugin path (#76/ADR-harness-011):**
+    `contract.build_store` returns a `RouterStore`, so `_Engine.remember` routes writes (dedup + base_all fan-out)
+    and dreaming routes through it too (#79). `MemoryFramework` stays a stub, but the live plugin/bench path
+    bypasses it (uses `build_store`).
+  - **Graph arc COMPLETE & MERGED (2026-06-23):** semantic_seed (#89/D034) + durability `path=` SQLite seam
+    (#92/D035) + delete across all backends (#93/D036) + e2e CRUD across all 3 durable backends (#95/D037) +
+    `delete` on the `MemoryStore` protocol (#99 + #101/D038).
+  - **Remaining:** a **captained large-benchmark run** (real embedder — the headline metrics gate) + the
+    cross-team plugin `build_store` graph-path line (Keith — makes the LIVE plugin graph durable) +
+    version-highest-wins ownership + MemoryFramework wire-or-retire.
 - Archive this file once the cross-team items + the menu (benchmarks / contested labels / perf-test /
   closeout) are closed or explicitly descoped.

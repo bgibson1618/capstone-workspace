@@ -7,7 +7,7 @@
 > **write path** and **harness integration**. This file is the durable backlog; `/pickup` should treat
 > it as the active priority until archived.
 
-## WRITE-PATH ARC — ✅ COMPLETE & MERGED (was the active arc; now the live gate is the Keith integration above)
+## WRITE-PATH ARC — ✅ COMPLETE & MERGED (RouterStore now adopted on the live plugin path, #76; the remaining live gate is the captained benchmark run — see the ⭐ section above)
 Brent's directive: *"not done until the router is as accurate as we can make it on both writes and
 retrievals."* All three steps below shipped + merged (#52/#55 WAL, #56 write-routing, #57 dedup — see Status).
 They are built but **NOT LIVE** until the ⭐ Keith integration (top of this file) wires them onto the write
@@ -79,12 +79,13 @@ path. Chosen sequence (historical, all done):
   shared doc — coordinate with the team). LOW.
 
 ## CONFIRMED DEFERRALS (document; build only if the milestone requires)
-- **Graph store: relational-retrieval accuracy — ✅ SHIPPED (Steps 0–semantic_seed: #75/#81/#84/#85/#86/#89,
-  D029–D034); durability + delete + Neo4j are now the ACTIVE solo arc (see `GRAPH_STORE_SCOPE.md`).** The
-  typed/directional edge model + multi_hop `max_depth` + accuracy-profile depth wiring + the `embed=` semantic
-  seed seam all landed eval-first/in-memory. Now active (Brent 2026-06-22): graph DURABILITY (stdlib-file first)
-  + DELETE (solo-additive → `[CONTRACT]`) + an e2e CRUD test across all 3 durable backends → Neo4j behind `uri=`
-  (FakeBoltDriver mock + captained parity, proven a no-op on accuracy).
+- **Graph store: relational-retrieval accuracy + durability + delete — ✅ SHIPPED & MERGED (#75/#81/#84/#85/#86/#89
+  accuracy + #92 durability + #93 delete + #95 e2e CRUD + #99/#101 delete-`[CONTRACT]`; D029–D038; see
+  `GRAPH_STORE_SCOPE.md`).** The typed/directional edge model + multi_hop `max_depth` + accuracy-profile depth +
+  the `embed=` semantic-seed seam + a `path=` SQLite durability seam + delete across all backends + an e2e CRUD
+  test (survives restart) + `delete` on the `MemoryStore` protocol all landed eval-first + gated. **Only remaining
+  in this thread: Neo4j behind `uri=`** (FakeBoltDriver mock + captained parity, proven a no-op on accuracy) +
+  the cross-team plugin `build_store` graph-path line (Keith — makes the LIVE plugin graph durable).
 - **ANN index** (HNSW/FAISS) — brute-force cosine v1 (D013). **Reranker** (Voyage/Cohere). **bge-m3**
   air-gapped fallback. **consult-2 / RRF** (Consult2Config declared, unused). **north-star** learned
   router (D007). **17 contested labels** adjudication. **Package extraction** (ADR-eval-001; needs

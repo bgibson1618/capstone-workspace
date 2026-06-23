@@ -1,13 +1,22 @@
 # Storage & Retrieval Map — agent-memory-harness (Brent's P3: stores + router)
 
-> ⚠️ **PARTIALLY SUPERSEDED (as of D030 — re-verify before relying on per-node status).** This map was
-> drawn earlier; since then: **RouterStore merged (#66)**, **reranker (#67)**, **fusion profile (#68)**,
-> **graph eval Step 0 (#75)**, **graph Step 1 typed/directional (#81)** all shipped. So the lines below
-> reading "RouterStore built-not-wired", "fusion in-flight", and "graph untyped/undirected" are STALE —
-> see DECISION_LOG **D025–D030** for current state. **Still accurate (the load-bearing point):** the LIVE
-> plugin write path (`_Engine.remember`) + `MemoryFramework` still **bypass RouterStore/Router.write** —
-> routed write-routing/dedup are not wired into the product path yet (the Keith integration). The
-> read/write data-flow shapes below remain a useful reference; the per-node "status" tags are dated.
+> ⚠️ **HISTORICAL SNAPSHOT — STATUS TAGS SUPERSEDED (drawn pre-#76).** Do NOT rely on the
+> LIVE / BUILT-NOT-WIRED / IN-FLIGHT tags below. **Authoritative current state = `DECISION_LOG.md`
+> (D025, D034–D038) + `CONTEXT.md`.** What changed since this map:
+> - The plugin is now a **dumb client of `contract.build_store`**, which returns a **`RouterStore` over
+>   `Router.with_config(...)`** (#76 / ADR-harness-011). So **`_Engine.remember` ROUTES writes through
+>   `RouterStore.write` → `Router.write`** (dedup + `base_all` fan-out to markdown+vectors+graph) — **NOT
+>   markdown-only** — and `recall` → `route().search`. RouterStore (#66/D025), fusion (#68), reranker (#67)
+>   are all **merged**.
+> - The graph store gained a **`path=` SQLite durability seam (#92/D035)**, **delete across all backends
+>   (#93/D036)**, an **e2e CRUD test across all 3 durable backends (#95/D037)**, and **`delete` is now on
+>   the `MemoryStore` protocol (#99 + #101/D038)**. The durability→delete→e2e arc is merged.
+> - **The ONE thing below still true:** the *live plugin's* `GraphStore` is built **without** `path=`
+>   (`contract.py:97`), so the plugin's graph is in-RAM until Keith's one-line `build_store` graph-path
+>   change lands — that is the only remaining "not-live" item. `MemoryFramework` is also still a stub, but
+>   the live plugin/bench path bypasses it (uses `build_store`).
+>
+> The data-flow SHAPES below remain a useful reference; the per-node STATUS tags are the dated snapshot.
 >
 > _(original header) Verified against real code on branch `router/fusion-profiles`; `file:line` citations._
 
@@ -23,29 +32,26 @@
 
 ---
 
-## The one fact that resolves the confusion
+## The one fact (CORRECTED — current as of #76 / #92 / #99 / #101)
 
-There are **four write entry points and they do NOT behave the same**:
+The write path now goes **through the router**. `contract.build_store()` returns a `RouterStore` over a
+configured `Router`, and the plugin drives it:
 
-1. **Plugin `_Engine.remember`** — **LIVE**, but writes to **markdown ONLY**. It does
-   *not* go through the router and does *not* fan out. (`client.py:97-109`)
-2. **#63 native pipeline** (`active_store.write(...)`) — **LIVE**, but the default
-   store is **`InMemoryStore` (RAM, nothing persisted)**. It only touches Brent's real
-   backends if a store is *injected* via `store=` — and nothing injects one today.
-   (`base.py:147-148`, `agent.py:639`)
-3. **`Router.write` / `route_write`** (base_all fan-out + dedup) — **BUILT-NOT-WIRED**.
-   The full markdown+vectors+graph fan-out logic exists and is tested, but the Router
-   isn't a `MemoryStore`, so no seam drives it. (`router.py:955-1040`)
-4. **`RouterStore`** — the adapter (PR #66) that makes #3 usable through a store seam —
-   **BUILT-NOT-WIRED**. Referenced only in `router.py` + one test; zero production
-   callers. (`router.py:1043-1112`)
+1. **Plugin `_Engine.remember`** — **LIVE**, routes through **`RouterStore.write` → `Router.write`**
+   (dedup + `base_all` fan-out to markdown+vectors+graph). NOT markdown-only anymore.
+   (`client.py` `remember` → `self._store.write`; `contract.py:99`)
+2. **#63 native pipeline** (`store.write`) — a `RouterStore` runs end-to-end **when injected**
+   (`store=RouterStore`, D025); the bare default is still `InMemoryStore`.
+3. **`Router.write` / `route_write`** (base_all + dedup) — **LIVE** via RouterStore on the plugin path.
+4. **`RouterStore`** (#66) — **LIVE**: it's what `build_store` returns; the plugin + dreaming consume it.
 
-So today: the only write that lands real persisted bytes through a *routed* path is...
-**none of them via the router.** Plugin remember = markdown file. Native eval =
-RAM. The router's fan-out write is dead code awaiting a `RouterStore` wiring.
+So the plugin's `remember` DOES land routed, deduped, multi-index writes. The remaining gap is durability
+of the *plugin's graph specifically*: its `GraphStore` is built without `path=` (`contract.py:97`), so its
+nodes are in-RAM until the `build_store` graph-path line lands (Keith). The vectors + markdown backends
+already persist; the graph store *can* (the `path=` seam, #92) — it just isn't wired in the plugin yet.
 
-The **read** path is different and the one place the router IS live: plugin
-`recall()` -> `Router.route(query)` -> ONE backend's `.search()`.
+The **read** path was always routed: plugin `recall()` -> `Router.route(query)` -> one backend's
+`.search()` (or the cascade/fusion view per the auto-selected profile).
 
 ---
 
@@ -174,14 +180,20 @@ client is inactive / fail-open). `config.py:46-48`, `client.py:152-157`.
 
 ## Status summary per path
 
+> **Snapshot table (pre-#76) — the Status column is STALE.** Current state is the corrected "one fact"
+> section above + DECISION_LOG D034–D038: `_Engine.remember` is now LIVE *through RouterStore* (routed +
+> base_all fan-out); `Router.write` / `RouterStore` / fusion are **merged & live**; the graph has a `path=`
+> SQLite durability seam (#92) and `delete` is on the `MemoryStore` protocol (#99/#101). The only remaining
+> not-live item is the plugin's graph `path=` wiring (Keith).
+
 | Path | Status | Hits which backend(s) |
 |------|--------|-----------------------|
-| `_Engine.remember` (plugin write) | **LIVE** | markdown only (`client.py:102`) |
-| `_Engine.recall` -> `Router.route` (plugin read) | **LIVE** | exactly one (speed profile) (`client.py:84`) |
-| #63 native `active_store.write` | **LIVE** | `InMemoryStore` (RAM) unless `store=` injected (`base.py:147`, `agent.py:639`) |
-| `Router.route_write` / `Router.write` base_all + dedup | **BUILT-NOT-WIRED** | markdown+vectors+graph (`router.py:981-1020`) |
-| `RouterStore` (store-seam adapter, #66) | **BUILT-NOT-WIRED** | drives `Router.write` (`router.py:1043`) |
-| `MemoryFramework.{write,get,search,all}` | **STUB** (`NotImplementedError`) | none (`framework.py:60-77`) |
-| `_GraphVectorCascade` (accuracy read) | **BUILT-NOT-WIRED** | graph->vector (`router.py:611`) |
-| `_FusionRetriever` (fusion read, RRF/score) | **IN-FLIGHT** (branch) | all backends fused (`router.py:761`) |
+| `_Engine.remember` (plugin write) | **LIVE — routes through RouterStore** (#76) | markdown+vectors+graph (base_all fan-out + dedup) |
+| `_Engine.recall` -> `Router.route` (plugin read) | **LIVE** | one backend (or cascade/fusion per the auto-selected profile) |
+| #63 native `active_store.write` | **LIVE** | `RouterStore` when injected (D025); bare default still `InMemoryStore` (RAM) |
+| `Router.route_write` / `Router.write` base_all + dedup | **LIVE** (via RouterStore on the plugin path) | markdown+vectors+graph |
+| `RouterStore` (store-seam adapter, #66) | **LIVE** (what `build_store` returns; plugin + dreaming consume it) | drives `Router.write` |
+| `MemoryFramework.{write,get,search,all,delete}` | **STUB** (`NotImplementedError`) — but the live path BYPASSES it (uses `build_store`) | none (`framework.py`) |
+| `_GraphVectorCascade` (accuracy read) | **LIVE** under the accuracy profile (auto-selected when `VOYAGE_API_KEY` set, #76) | graph->vector |
+| `_FusionRetriever` (fusion read, RRF/score) | **MERGED** (#68); LIVE under the fusion profile (default offline auto-select) | all backends fused |
 | dedup-on-write | **OFF by default** (unsafe offline, D024) | n/a (`router.py:478`) |

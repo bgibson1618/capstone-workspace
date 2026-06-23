@@ -2,3 +2,4 @@
 .env.*
 work/
 __pycache__/
+pain_points.md

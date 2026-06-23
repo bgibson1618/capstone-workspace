@@ -177,9 +177,11 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
   `MemoryFramework.{write,get,search,all}` stubs (`eval/memeval/opencode/framework.py:60-77`) are still
   `NotImplementedError` but the live path BYPASSES them → decide wire-or-retire (not a blocker); (c) version-highest-wins
   ownership (cross-team).
-- **THEN (menu):** **graph store (Neo4j + relational-retrieval accuracy) — SCOPED, see `GRAPH_STORE_SCOPE.md`**
-  (eval-first: graph eval → in-memory typed/directional edge model → Neo4j as a proven no-op) — the solo thread
-  to progress while integration is scheduled; real benchmarks (captained); 17 contested labels; perf-testing; closeout.
+- **THEN (menu):** the graph **accuracy + durability + delete** arc is DONE (#75–#101, D029–D038); **only Neo4j
+  behind `uri=` remains in that thread** — `GRAPH_STORE_SCOPE.md` Step 4: a `FakeBoltDriver` mock (CI-offline) +
+  a captained id-set/order parity run, a proven no-op on accuracy. Other backlog: the captained benchmark (the
+  headline metrics gate); Keith's plugin `build_store` graph-path line; 17 contested labels; perf-testing; bge-m3
+  must-have-vs-descope; capstone closeout/evidence-pack.
 - **Resume:** shared `main` @ current (teammate PRs merged since: #60 dataset schema, **#61 PRD-compliance
   audit + ablation survey**, **#62 Docker removed / Claude Code CLI coding agent**, **#63 benchmark-native eval
   pipeline (5 benches)**, #64 stores docstring, #65 CC rationale, **#79 dreaming routes writes through Router, #80 code-agent retry**). `main` synced through **#101** (the graph durability→delete→e2e arc + the delete `[CONTRACT]` all merged). Write-path arc **#52/#55/#56/#57 MERGED**;
@@ -188,7 +190,7 @@ D016 for the ruled design, D017 for IRCoT scoped-out).
   See `REMEDIATION_PLAN.md` for the full backlog.
 
 ## How to verify (run from `~/projects/agent-memory-harness/eval`)
-- Smoke gate (the team's CI check): `python3 tests/test_smoke.py` → **82 passed / 0 failed / 1 skipped** as of 2026-06-21 (count grows as the team adds tests / optional deps resolve — the contract is 0 failed; was 67→71→73→82).
+- Smoke gate (the team's CI check): `python3 tests/test_smoke.py` → **97 passed / 0 failed / 1 skipped** as of 2026-06-23 (count grows as the team adds tests / optional deps resolve — the contract is 0 failed; was 67→71→73→82→95→97). Brent's full stores suite: `python3 -m unittest discover -s memeval/stores/tests -p 'test_*.py'` → **294 passed / 1 skipped**.
 - D008 retrieval/gate fixture: `python3 -m memeval.stores.tests.test_d008_evals` (report) · `... -m unittest ...` (now on `main`). Cascade tests: `test_d008_cascade`; profile matrix: `test_profile_matrix`; bake-off: `test_routing_bakeoff`; Voyage embedder: `test_embedders`; semantic retrieval (PR #44, merged): `test_semantic_retrieval_evals` (report: divergence recall@5 0.000 / control 1.000); write-routing: `test_write_routing_evals`; dedup: `test_dedup_evals`.
 - Brent's suites: `python3 -m unittest memeval.stores.tests.test_markdown_store memeval.stores.tests.test_sqlite_store memeval.stores.tests.test_graph_store memeval.stores.tests.test_router memeval.stores.tests.test_routing_evals`
 - Reproduce the routing number: `python3 -m memeval.stores.tests.test_routing_evals` → **28/31 = 90%** agreement on the blind hard cases.

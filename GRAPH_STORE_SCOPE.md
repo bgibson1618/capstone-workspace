@@ -24,9 +24,12 @@
 > `_persist` rollback; `close()`/post-close fail-loud). (2) **DELETE — ✅ DONE (#93/D036, OPEN; internal-gate 0 +
 > Codex R1/R2 PASS):** solo-additive/duck-typed `delete(item_id)` on the 3 backends (durable; graph atomic +
 > mirror-preserving) + `Router`/`RouterStore` fan-out (idempotent, returns count); the `[CONTRACT]` PR to add
-> `delete` to the frozen `MemoryStore` protocol (all 4 owners) is the follow-up. (3) **E2E CRUD — NEXT** across all
-> 3 durable backends (write → recall → delete → reconstruct-from-disk → confirm). (4) **Neo4j behind `uri=`** —
-> FakeBoltDriver mock (Cypher/`as_of`/`LIMIT`) + a captained id-set/order parity run (proven a no-op on accuracy).**
+> `delete` to the frozen `MemoryStore` protocol (all 4 owners) is the follow-up. (3) **E2E CRUD — ✅ DONE (#95/D037, OPEN; Codex R1→fold→R2 PASS):**
+> a real RouterStore over all 3 durable backends — Create→Read→Update→Delete→restart-from-disk→confirm, per-backend
+> + anti-theater. **The durability→delete→e2e arc is COMPLETE.** (4) **Neo4j behind `uri=` — remaining follow-up:**
+> FakeBoltDriver mock (Cypher/`as_of`/`LIMIT`) + a captained id-set/order parity run (proven a no-op on accuracy).
+> Plus: the `[CONTRACT]` delete-on-protocol PR (4 owners) and the cross-team plugin `build_store` graph-path
+> wiring (Keith — makes the LIVE plugin graph durable).**
 
 ## The core call (panel unanimous)
 **Relational-retrieval ACCURACY lives in the edge model + traversal — fully testable in-memory,

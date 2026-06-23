@@ -3,21 +3,21 @@
 > Source: cross-source requirements-coverage audit (2026-06-21), 6 extractors (PRD / architecture /
 > plan / frozen contract / our decision-log+team-notes / integration ADRs), each verified against the
 > code. Triggered by the realization that "slice complete" had overlooked write-routing + Neo4j.
-> The slice is solidly **built + tested in isolation** (~154 tests, stdlib-only); the gaps are the
-> **write path** and **harness integration**. This file is the durable backlog; `/pickup` should treat
-> it as the active priority until archived.
+> The slice is solidly **built + tested in isolation** (stdlib-only; stores suite now **337 passed / 3 skipped (340 collected)**). *As originally audited (2026-06-21)* the gaps were the
+> **write path** and **harness integration** — both since SHIPPED (write-path LIVE via RouterStore #76; durability hardening #117 MERGED). The current active priority is the **captained large-benchmark
+> metric run** (the headline gate) + the deferred hardening / Neo4j follow-ups below. This file remains the durable backlog.
 
-## 🛠 BACKEND DURABILITY HARDENING ARC — ✅ DONE & MERGE-READY (PR #117 OPEN, D042, 2026-06-23; Brent merges)
+## 🛠 BACKEND DURABILITY HARDENING ARC — ✅ DONE & MERGED (PR #117, D042, 2026-06-23, squash `9d77ecb`)
 > Source: the `store-durability-audit` Workflow (2026-06-23, 52 agents, adversarially verified + empirically
 > crash-tested). **Full findings: `BACKEND_DURABILITY_AUDIT.md`. Decision: `DECISION_LOG.md` D040** (+ D039 Bolt) → **arc shipped as D042.**
 > **Original verdict: both durable backends `needs-hardening`; markdown/OKF effectively POC persistence.** Both LIVE on
 > the product path (every `remember` fans out to all backends; Daydreamer writes the same dir cross-process). Built
 > eval-first immediately after the graph thread shipped (D041), per Brent's circle-back call.
 >
-> **✅ SHIPPED (PR #117 `stores/backend-durability-hardening`, OPEN/ready for Brent to merge; gate journey: cross-vendor
+> **✅ SHIPPED & MERGED (PR #117 `stores/backend-durability-hardening`, squash `9d77ecb`; gate journey: cross-vendor
 > Codex R1 FAIL → R2 FAIL → R3 PASS — each round caught a real cross-process WRITE-coherence bug, refresh-seam-incomplete
 > → mtime-race → writer-side generation-stale-ack — then a CodeRabbit fold of 6 quick-wins). Instrument: `test_backend_durability.py`
-> (16 tests). Gates: durability 16/16; full stores `discover` 340 passed / 3 skipped; smoke 95/0/1. No `[CONTRACT]` change:**
+> (16 tests). Gates: durability 16/16; full stores `discover` 337 passed / 3 skipped (340 collected); smoke 95 passed / 1 skipped (96 collected). No `[CONTRACT]` change:**
 > 1. **markdown/OKF HIGH-1 — atomic write: DONE** (`tmp.replace`+fsync, **per-call temp** — torn update no longer loses prior data).
 > 2. **markdown/OKF HIGH-2 — cross-process lock + read-refresh: DONE** (`flock` + a **persisted generation-counter** with
 >    **reconcile-under-lock on write/delete/flush** — read-your-peers'-writes coherence — + a read-refresh seam; the mtime
@@ -39,8 +39,8 @@
 ## WRITE-PATH ARC — ✅ COMPLETE & MERGED (RouterStore now adopted on the live plugin path, #76; the remaining live gate is the captained benchmark run — see the ⭐ section above)
 Brent's directive: *"not done until the router is as accurate as we can make it on both writes and
 retrievals."* All three steps below shipped + merged (#52/#55 WAL, #56 write-routing, #57 dedup — see Status).
-They are built but **NOT LIVE** until the ⭐ Keith integration (top of this file) wires them onto the write
-path. Chosen sequence (historical, all done):
+They are now **LIVE on the product path** — the plugin consumes them via `RouterStore` / `contract.build_store`
+(#76, ADR-harness-011; see the ⭐ section below). Chosen sequence (historical, all done):
 1. **WAL quick-win** — `SqliteVectorStore` opens sqlite with no `PRAGMA journal_mode=WAL` (ADR-P2: WAL
    mandatory). Concurrency hazard once MCP writes + the Daydreamer share one `$MEMORY_STORE` file.
    Fully owned, ~1 line + a file-backed test. *(verified: sqlite_store.py connect, no pragma)*
@@ -157,19 +157,19 @@ path. Chosen sequence (historical, all done):
   persistence. Full findings: `BACKEND_DURABILITY_AUDIT.md`; decisions D039 (Bolt) + D040 (audit/arc).
 - **2026-06-23: Neo4j Phase-A parity floor — DONE (PR #111, D041)** — the last solo graph thread. The
   durability arc became now-next, and shipped same-session.
-- **2026-06-23: Backend Durability Hardening Arc — DONE & MERGE-READY (PR #117, D042, OPEN; Brent merges).**
+- **2026-06-23: Backend Durability Hardening Arc — DONE & MERGED (PR #117, D042, squash `9d77ecb`).**
   markdown/OKF made production-durable (atomic write + cross-process flock + persisted generation-counter
   w/ reconcile-under-lock + O(1) delete + corrupt-file guard); sqlite/graph thread-safe. Gate: Codex
   R1 FAIL→R2 FAIL→R3 PASS + CodeRabbit fold. `test_backend_durability.py` (16); durability 16/16, stores
-  340/3-skipped, smoke 95/0/1. **Deferred follow-ups recorded** (GraphStore cross-process read freshness —
+  337 passed / 3 skipped (340 collected), smoke 95 passed / 1 skipped (96 collected). **Deferred follow-ups recorded** (GraphStore cross-process read freshness —
   a pre-existing residual, not a regression — + markdown MEDs).
 - **2026-06-23: research + architecture-reconcile Workflow — DONE (D043).** `docs/falkordb_comparison.md`
   + `docs/local_stores_performance.md` verified (both PARTIAL — Falkor draft re-introduced D041's fixed bugs
   + is subprocess/not-stdlib → CI harness only; FTS5-cache doesn't fix durability, validating the D042
-  direction). 8 backend-arch drifts → 7 storage ADRs (ADR-storage-003..009, **PR #118 OPEN/ready to merge**).
+  direction). 8 backend-arch drifts → 7 storage ADRs (ADR-storage-003..009, **PR #118 MERGED, squash `6b03d32`**).
   architecture.md reconciled on LOCAL `docs/architecture-reconcile` (01562b3, UNPUSHED — `[CONTRACT]`, a
   team-meeting governance call). Neo4j **Phase-B plan drafted + PARKED** (gated on the captained live run).
-- **Open now (Brent / captained / team):** (1) Brent merges **#117** + **#118**; (2) the deferred hardening
+- **Open now (Brent / captained / team):** (1) #117 + #118 **MERGED** (squash `9d77ecb` / `6b03d32`); (2) the deferred hardening
   follow-ups; (3) the **captained live `NEO4J_TEST_URI` run** (Cypher validity; HARD prereq for Phase B);
   (4) **Neo4j Phase B**; (5) architecture.md reconciliation → team meeting → push/merge. **⭐ Headline gate:
   the captained large-benchmark run.** *(Keith's plugin `build_store` graph-path wiring is DONE — `contract.py:100`;

@@ -13,8 +13,18 @@
 > edges + `okf.py` anchor-capture (real OKF `[depends on](x.md)` links typed end-to-end, always-tuple
 > `okf_links`; gated by `test_okf_to_graph.py`, 9 tests). **multi_hop also DONE (#85/D032 = configurable
 > `max_depth`, a knob that recovers the depth-3 gold; default byte-equiv).** **accuracy-profile wiring DONE
-> (#86/D033 — cascade injects per-query depth, accuracy=3 PROVISIONAL). Next = semantic_seed embedder seeding
-> (offline seam + headroom eval; captained win) / Neo4j durability.**
+> (#86/D033 — cascade injects per-query depth, accuracy=3 PROVISIONAL).** **semantic_seed DONE (#89/D034 —
+> `embed=` hybrid cosine seam, mechanism-only; byte-equiv offline; captained accuracy deferred).**
+>
+> **NEXT ARC (Brent 2026-06-22): durable graph → e2e CRUD across all 3 backends.** Durability ≠ Neo4j —
+> stdlib-first gets a real CI-runnable e2e *now*; Neo4j follows as the real-DB step. Ordered, each eval-first
+> + gated: (1) **Graph DURABILITY** — stdlib file first (`$MEMORY_STORE/graph.db`; persist nodes, rebuild the
+> `_out`/`_in` edge indexes on load from node metadata = single source of truth; `path=None` → in-memory,
+> byte-equiv; recompute embeddings on load). (2) **DELETE** — solo-additive `delete(item_id)` on the 3
+> backends + `Router`/`RouterStore` fan-out (hard delete, idempotent, present-tense), THEN a `[CONTRACT]` PR
+> to add `delete` to the frozen `MemoryStore` protocol (all 4 owners). (3) **E2E CRUD** across all 3 durable
+> backends (write → recall → delete → reconstruct-from-disk → confirm). (4) **Neo4j behind `uri=`** —
+> FakeBoltDriver mock (Cypher/`as_of`/`LIMIT`) + a captained id-set/order parity run (proven a no-op on accuracy).**
 
 ## The core call (panel unanimous)
 **Relational-retrieval ACCURACY lives in the edge model + traversal — fully testable in-memory,

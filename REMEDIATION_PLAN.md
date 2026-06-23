@@ -23,22 +23,24 @@ path. Chosen sequence (historical, all done):
    an explicit storage/Brent open question); enforce highest-version-wins so a stale lower-version write
    can't clobber. *(verified: all stores INSERT-OR-REPLACE / last-write-wins; version inert)*
 
-## ⭐ TOP PRIORITY (Brent's call, 2026-06-22) — WIRE WRITE-ROUTING LIVE (cross-team w/ Keith)
-- **The write path bypasses the router.** Today `_Engine.remember` (`plugin/cookbook_memory/core/client.py:97-109`)
-  hardcodes `self._backends["markdown"].write(...)`, and the eval `MemoryFramework.{write,get,search,all}` are
-  `NotImplementedError` stubs (harness defaults to `InMemoryStore`). So **`route_write`/`Router.write`
-  (write-routing #56 + dedup #57) are built but NEVER CALLED** — write-routing/dedup aren't live, AND Brent's
-  stores are never exercised in a real run, which **blocks the headline <10% efficiency + accuracy-on-vs-off
-  metrics**. Storage paths (for reference): backends live under `$MEMORY_STORE` (default
-  `${CLAUDE_PROJECT_DIR}/.cookbook-memory`) — vectors=`memory.db`, markdown=`markdown/`, graph=in-memory.
-- **✅ UPDATE (#66 / D025) — RouterStore adapter shipped (solo):** `RouterStore` (a `MemoryStore` facade over the
-  Router: `write→Router.write`, `search→route().search`, `get`/`all` union+dedup) is built + eval-gated (13 tests,
-  Codex gate clean), and routed writes now run **end-to-end in the #63 native eval pipeline** (`store=RouterStore`;
-  `WriteReceipt` proves markdown+vectors+graph fan-out). The router seam + an integration test (Brent's) are DONE.
-  **Remaining (Keith's files):** adopt `RouterStore` at the plugin `_Engine.remember` (`client.py:102`,
-  markdown-hardcoded) and the `MemoryFramework.{write,get,search,all}` stubs (`framework.py:60-77`) — de-risked to
-  "adopt this adapter" — plus a **captained large-benchmark metric run** (real embedder) for the headline lift
-  (offline samples show parity, D019/D020 lesson). **Schedule with Keith.**
+## ⭐ TOP PRIORITY (UPDATED 2026-06-22) — WRITE-ROUTING IS NOW LIVE; remaining = the captained benchmark run
+- **✅ The write path now routes through the router (#76 / ADR-harness-011, verified in code).** The plugin was
+  refactored to a **dumb client of `contract.build_store`**, which returns a **`RouterStore` over
+  `Router.with_config(...)`**: `_Engine.remember` → `store.write` (routed + deduped; the old
+  `self._backends["markdown"].write(...)` hardcode is GONE), `recall` → `store.search`, and the engine
+  **auto-selects the profile** (`$MEMORY_PROFILE` / `VOYAGE_API_KEY`→accuracy / else fusion). Dreaming routes
+  through the same seam (#79). So **`route_write`/`Router.write` (write-routing #56 + dedup #57) are now CALLED on
+  the product path** — the "writes bypass the router / stores never exercised" framing that drove this section is
+  **obsolete.** Storage paths (reference): under `$MEMORY_STORE` (default `${CLAUDE_PROJECT_DIR}/.cookbook-memory`)
+  — vectors=`memory.db`, markdown=`markdown/`, graph=in-memory (NOT persisted — the durability arc closes this).
+- **✅ RouterStore adapter (#66 / D025, solo):** the `MemoryStore` facade over the Router (`write→Router.write`,
+  `search→route().search`, `get`/`all` union+dedup), eval-gated (13 tests, Codex clean) — exactly what the plugin
+  adopted in #76.
+- **What actually remains:** (a) a **captained large-benchmark metric run** (real embedder; now auto-accuracy-profile
+  with the key) for the headline <10%-overhead + accuracy-on-vs-off lift over `InMemoryStore` (offline samples show
+  parity, D019/D020 lesson) — **the real headline gate**; (b) the eval-harness `MemoryFramework.{write,get,search,all}`
+  stubs (`framework.py:60-77`) are still `NotImplementedError` but the live plugin/bench path BYPASSES them (uses
+  `build_store`) → a decide-wire-or-retire, not a blocker; (c) version-highest-wins ownership (cross-team).
 
 ## CROSS-TEAM (flag to the team; not solo)
 - **`version` invariant ownership** — per-store vs dreaming/persistence layer (TEAM_NOTES#1). Decide, then
@@ -77,11 +79,12 @@ path. Chosen sequence (historical, all done):
   shared doc — coordinate with the team). LOW.
 
 ## CONFIRMED DEFERRALS (document; build only if the milestone requires)
-- **Graph store: Neo4j backend + relational-retrieval accuracy** — **SCOPED for next session, see
-  `GRAPH_STORE_SCOPE.md`** (design-panel, 2026-06-22). Accuracy = the typed/directional edge model
-  (testable in-memory, eval-first); Neo4j = infra behind the `uri=` seam, shipped last as a proven
-  no-op. Ordered plan: graph-retrieval eval (Step 0) → in-memory edge model (Step 1) → embedder seeding
-  → Neo4j backend (mock + captained parity). Steps 0/1 are the bankable offline win.
+- **Graph store: relational-retrieval accuracy — ✅ SHIPPED (Steps 0–semantic_seed: #75/#81/#84/#85/#86/#89,
+  D029–D034); durability + delete + Neo4j are now the ACTIVE solo arc (see `GRAPH_STORE_SCOPE.md`).** The
+  typed/directional edge model + multi_hop `max_depth` + accuracy-profile depth wiring + the `embed=` semantic
+  seed seam all landed eval-first/in-memory. Now active (Brent 2026-06-22): graph DURABILITY (stdlib-file first)
+  + DELETE (solo-additive → `[CONTRACT]`) + an e2e CRUD test across all 3 durable backends → Neo4j behind `uri=`
+  (FakeBoltDriver mock + captained parity, proven a no-op on accuracy).
 - **ANN index** (HNSW/FAISS) — brute-force cosine v1 (D013). **Reranker** (Voyage/Cohere). **bge-m3**
   air-gapped fallback. **consult-2 / RRF** (Consult2Config declared, unused). **north-star** learned
   router (D007). **17 contested labels** adjudication. **Package extraction** (ADR-eval-001; needs

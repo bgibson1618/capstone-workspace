@@ -18,9 +18,10 @@
 >
 > **NEXT ARC (Brent 2026-06-22): durable graph → e2e CRUD across all 3 backends.** Durability ≠ Neo4j —
 > stdlib-first gets a real CI-runnable e2e *now*; Neo4j follows as the real-DB step. Ordered, each eval-first
-> + gated: (1) **Graph DURABILITY** — stdlib file first (`$MEMORY_STORE/graph.db`; persist nodes, rebuild the
-> `_out`/`_in` edge indexes on load from node metadata = single source of truth; `path=None` → in-memory,
-> byte-equiv; recompute embeddings on load). (2) **DELETE** — solo-additive `delete(item_id)` on the 3
+> + gated: (1) **Graph DURABILITY — ✅ DONE (#92/D035, OPEN, 4-round gate R4-PASS):** stdlib `path=` SQLite seam
+> (`$MEMORY_STORE/graph.db`; persist nodes, rebuild `_out`/`_in` on load from `okf_links` = single source of
+> truth; `path=None` byte-equiv; recompute embeddings on load; **atomic** write parse→embed→persist→index +
+> `_persist` rollback; `close()`/post-close fail-loud). (2) **DELETE** — solo-additive `delete(item_id)` on the 3
 > backends + `Router`/`RouterStore` fan-out (hard delete, idempotent, present-tense), THEN a `[CONTRACT]` PR
 > to add `delete` to the frozen `MemoryStore` protocol (all 4 owners). (3) **E2E CRUD** across all 3 durable
 > backends (write → recall → delete → reconstruct-from-disk → confirm). (4) **Neo4j behind `uri=`** —

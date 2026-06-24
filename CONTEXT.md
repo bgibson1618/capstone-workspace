@@ -1,6 +1,6 @@
 # CONTEXT — Brent's slice of agent-memory-harness ("Cookbook Memory")
 
-> Front door for picking this up in a fresh session. Last updated 2026-06-25.
+> Front door for picking this up in a fresh session. Last updated 2026-06-24.
 
 ## What this is
 A 4-person team project: a model-agnostic **persistent memory harness** for long-running
@@ -12,7 +12,7 @@ Relevancy, Accuracy). Shared repo: github.com/kenhuangus/agent-memory-harness (*
 backends) + `eval/memeval/router.py`. Teammates: Keith @kmazanec (harness/OpenCode), Ken
 @kenhuangus (eval infra + repo owner), Scott B. @NerdAlert58 (dreaming).
 
-## ⭐ NORTH STAR — THIS OVERRIDES EVERYTHING BELOW IT (set by Brent; re-affirmed emphatically 2026-06-25)
+## ⭐ NORTH STAR — THIS OVERRIDES EVERYTHING BELOW IT (set by Brent; re-affirmed emphatically 2026-06-24)
 **WE ARE BUILDING THE BEST MEMORY ROUTER WE CAN. FULL STOP.** That is the only fixed point. Every other line in this doc, every `DECISION_LOG` entry, every ADR, and **`architecture.md` itself** is SUBORDINATE, provisional, and often stale. Do NOT treat any of them as a constraint on doing the better thing.
 
 - **Build like every option is on the table — because it is. Constraints are NEGOTIABLE.** Heavier/paid/native deps (FalkorDB, sentence-transformers, sqlite-vec, usearch, Voyage, rerankers, a learned router) are all fair game if they make the router better. Stdlib-offline is a CI convenience (an air-gapped test path), **never a feature ceiling** — if it ever blocks the best system, the system wins.
@@ -25,14 +25,14 @@ backends) + `eval/memeval/router.py`. Teammates: Keith @kmazanec (harness/OpenCo
 ## Eval philosophy — what actually matters (2026-06-24)
 We build out the eval set as we go — fast offline "unit evals" (the routing bake-off, retrieval evals) run between full pipeline runs — **but those results are provisional data points, not verdicts.** The **only** metric that decides anything is the **SWE-Bench-CL pipeline** (`make pipeline`). Until we get real SWE-Bench-CL feedback, **keep every option on the table** — do not over-fit to, or descope candidates based on, the small unit-eval sets. *(Concretely: routing evals are **English-focused for now**; non-English / multilingual cases are **deferred** — the `GAP:needs-learning` bucket is a 3-case multilingual edge the English coding workload doesn't exercise, and semantic routing's only measured edge over rules is on exactly those.)*
 
-## CURRENT STATUS (2026-06-25) — read this first
+## CURRENT STATUS (2026-06-24) — read this first
 **Branches / PRs (pushed to origin, awaiting review/merge):**
 - **PR #138** — `stores/track0-scale-eval`: Track 0, the **scale-retrieval benchmark** (the eval-scale foundation). Base `main`.
 - **PR #139** — `stores/track-a-fusion-rerank`: Track A, **rerank as a `RouterConfig` stage** (fuse-all + rerank). Stacked on #138.
 
 Both rebased clean onto `origin/main` (now `452102d`), cross-vendor verified PASS, 351 stores-tests green. *(The older local `stores/backend-upgrades` arc branch — with the parked semantic/minilm bake-off — is NOT pushed; these two tracks were rebased OFF it onto `main` for clean PRs.)*
 
-**Shipped the build day (2026-06-24/25):**
+**Shipped the build day (2026-06-24):**
 - **Track 0 — Scale Retrieval Benchmark (PR #138):** a deterministic, offline, CI-safe eval exercising the stores+router at realistic memory volume — **the fast inner-loop every backend upgrade now ships against** (`make pipeline` stays the final arbiter). 5-lens calibrated corpus (1.5k quality → 291 retained); a **target-must-beat-floor** anti-theater calibration gate; config matrix with `Skip`-reserved ANN/native-graph/FTS5/Voyage columns; committed offline matrix; 6-test smoke; reproducible from committed fixtures (filler=100). Lives in `eval/memeval/stores/tests/scale_retrieval/`. Headline (offline/hashing): **graph_bfs recall@10 1.000 / fusion_rrf 0.997 dominate route_speed 0.876.**
 - **Track A — rerank-in-the-router (PR #139, D045):** `RouterConfig.reranker`/`rerank_top_n`; `Router.route()` wraps its base retriever in a `RerankedStore` when the profile sets a reranker; `fusion_profile()`/`accuracy_profile()` carry it; the build-layer `build_router_store` helper was REMOVED (reranking is the router's domain, the same layer as fusion). **Findings:** route-to-one throws away relational recall (multi_hop **0.348 → 0.978** under fusion); the **captained** Voyage rerank takes semantic-divergence **MRR 0.922 → 1.000** (recall saturated). Verdict: **fuse-all + rerank is the best retrieval config.**
 - (Earlier this session: the `router_ui` inspector + the **semantic-routing-deferred** finding still stand — see DECISION_LOG.)
@@ -40,6 +40,8 @@ Both rebased clean onto `origin/main` (now `452102d`), cross-vendor verified PAS
 **⭐ The headline `make pipeline` gate MAY HAVE LIFTED:** `origin/main` advanced to **`452102d` = #136 ("make `--grader swebench` actually grade SWE-Bench-CL")** — a NEW grader fix PAST #132, which is exactly the go-signal Brent set for the first *trustworthy* accuracy run. **Still Brent's call to run it.** The pipeline is the only metric that decides anything.
 
 **Cross-team hand-off READY:** making **fuse-all + rerank the LIVE default** is now a **one-line PROFILE change** in `plugin/cookbook_memory/core/contract.py::build_store` (Keith's seam) — point the keyed/accuracy path at a fusion + `VoyageReranker` profile; NO reranker wiring in the plugin (rerank rides in the profile). Track A shipped the composition + the evidence.
+
+**↳ TOP NEXT MOVE (if a successor must pick ONE):** run the **`make pipeline`** — #136 (`452102d`) appears to have lifted the grader gate Brent set, and the pipeline is the ONLY metric that decides anything; we now have fuse-all+rerank + the Track 0 scale eval to feed it. Everything in the menu below is valuable but **secondary to a trustworthy pipeline number** — and all of it (including the run) is **Brent's call** (the pipeline run is intentionally gated on his word).
 
 **The build menu (Brent's call, all eval-first against the Track 0 scale benchmark):** Track B native graph (FalkorDB / Neo4j Phase-B) · Track C real embeddings + ANN (sqlite-vec — also fixes the brute-force-search-at-scale bottleneck, the corrected perf finding) · Track D FTS5 lexical · Track E learned router · the **captained Voyage matrix** (spend gate) · the **Keith hand-off** · the **pipeline run** (if #136 = go).
 

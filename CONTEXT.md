@@ -1,6 +1,6 @@
 # CONTEXT — Brent's slice of agent-memory-harness ("Cookbook Memory")
 
-> Front door for picking this up in a fresh session. Last updated 2026-06-23.
+> Front door for picking this up in a fresh session. Last updated 2026-06-24.
 
 ## What this is
 A 4-person team project: a model-agnostic **persistent memory harness** for long-running
@@ -11,6 +11,9 @@ Relevancy, Accuracy). Shared repo: github.com/kenhuangus/agent-memory-harness (*
 **Brent (@bgibson1618) is P3** — owns `eval/memeval/stores/` (markdown / sqlite-vector / graph
 backends) + `eval/memeval/router.py`. Teammates: Keith @kmazanec (harness/OpenCode), Ken
 @kenhuangus (eval infra + repo owner), Scott B. @NerdAlert58 (dreaming).
+
+## Eval philosophy — what actually matters (2026-06-24)
+We build out the eval set as we go — fast offline "unit evals" (the routing bake-off, retrieval evals) run between full pipeline runs — **but those results are provisional data points, not verdicts.** The **only** metric that decides anything is the **SWE-Bench-CL pipeline** (`make pipeline`). Until we get real SWE-Bench-CL feedback, **keep every option on the table** — do not over-fit to, or descope candidates based on, the small unit-eval sets. *(Concretely: routing evals are **English-focused for now**; non-English / multilingual cases are **deferred** — the `GAP:needs-learning` bucket is a 3-case multilingual edge the English coding workload doesn't exercise, and semantic routing's only measured edge over rules is on exactly those.)*
 
 ## Workspace split (important)
 - **`~/projects/agent-memory-harness`** — the SHARED code repo. Brent's real deliverables live

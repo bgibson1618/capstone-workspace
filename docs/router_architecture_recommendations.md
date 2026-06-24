@@ -10,7 +10,7 @@
 > needs an index-coherence design; trivial ANN-SQL ordering bug. **Rec 4 (FTS5)** — diverges from the shared
 > `idf_coverage` scorer; FTS5-as-SSOT also addresses durability. **Rec 1 (MiniLM)** — the no-LLM-routing
 > principle is already built; MiniLM-as-an-option is an eval question. **Not yet adopted, not rejected —
-> pending eval.** Full review (a risk-map) → `docs/router_recommendations_cross_vendor_review.md`. Decisions →
+> pending eval.** Full review (a risk-map; ARCHIVED pre-northstar) → `docs/archive/router-cross-vendor-review-2026-06-23-pre-northstar.md`. Decisions →
 > `DECISION_LOG.md` **D044** (reopens D043/D039).
 >
 > *(Original research-agent content preserved verbatim below.)*

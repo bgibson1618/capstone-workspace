@@ -1,0 +1,324 @@
+"use strict";
+
+// ---- tiny helpers ---------------------------------------------------------
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const el = (tag, attrs = {}, children = []) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v;
+    else if (k === "html") n.innerHTML = v;
+    else if (k === "on") for (const [ev, fn] of Object.entries(v)) n.addEventListener(ev, fn);
+    else if (v !== null && v !== undefined) n.setAttribute(k, v);
+  }
+  for (const c of [].concat(children)) n.append(c && c.nodeType ? c : document.createTextNode(c ?? ""));
+  return n;
+};
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmtTs = (t) => (t ? new Date(t * 1000).toISOString().slice(0, 10) : "—");
+const BK = [["markdown", "md"], ["vectors", "vec"], ["graph", "graph"]];
+const SHORT = { markdown: "md", vectors: "vec", graph: "graph" };
+
+async function getJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${r.status} ${url}`);
+  return r.json();
+}
+async function postJSON(url, body) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || `${r.status}`);
+  return data;
+}
+function toast(msg, isErr = false) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.className = "toast" + (isErr ? " err" : "");
+  setTimeout(() => (t.className = "toast hidden"), 2600);
+}
+
+// ---- state ----------------------------------------------------------------
+let MEMORIES = [];
+let SUMMARY = null;
+let browseSort = { key: "item_id", dir: 1 };
+
+// ---- tabs -----------------------------------------------------------------
+$$(".tab").forEach((b) =>
+  b.addEventListener("click", () => {
+    $$(".tab").forEach((x) => x.classList.toggle("active", x === b));
+    $$(".view").forEach((v) => v.classList.toggle("active", v.id === b.dataset.tab));
+  })
+);
+
+// ---- summary strip --------------------------------------------------------
+function renderSummary(s) {
+  const counts = BK.map(([n]) => `${SHORT[n]} ${s.counts[n] ?? 0}`).join(" · ");
+  const fan = ["1", "2", "3"].map((k) => `${k}→${s.fanout_histogram[k] || 0}`).join(" ");
+  const status = BK.map(([n]) => `${SHORT[n]}:${s.backend_status[n]}`).join(" ");
+  const bits = [
+    el("span", { class: "pill" }, [el("b", {}, "store "), s.store_path]),
+    el("span", { class: "pill" }, [el("b", {}, "profile "), `${s.profile} (${s.profile_source})`]),
+    el("span", { class: "pill" }, [el("b", {}, "backends "), status]),
+    el("span", { class: "pill" }, [el("b", {}, "counts "), counts]),
+    el("span", { class: "pill" }, [el("b", {}, "unique "), String(s.total_unique)]),
+    el("span", { class: "pill" }, [el("b", {}, "fan-out "), fan]),
+    el("span", { class: "pill" }, [el("b", {}, "flagged "), String(s.flagged_count)]),
+    el("span", { class: "pill" }, [el("b", {}, "mis-route "), String(s.misroute_count)]),
+    el("span", { class: "pill" }, [el("b", {}, "ambiguous "), String(s.ambiguous_count)]),
+  ];
+  if (s.intent_mismatch_count) bits.push(el("span", { class: "pill warn" }, `intent-mismatch ${s.intent_mismatch_count}`));
+  for (const w of s.warnings || []) bits.push(el("span", { class: "pill warn" }, "⚠ " + w));
+  const box = $("#summary");
+  box.textContent = "";
+  bits.forEach((b) => box.append(b));
+}
+
+// ---- score bars (shared by routing + probe decision) ----------------------
+function scoreBars(scores, choice) {
+  const max = Math.max(0.0001, ...BK.map(([n]) => Math.abs(scores[n] || 0)));
+  const bars = BK.map(([n, cls]) => {
+    const v = scores[n] || 0;
+    const pct = Math.max(0, (Math.abs(v) / max) * 100);
+    return el("div", { class: "bar-row" + (n === choice ? " winner" : "") }, [
+      el("span", { class: "bk" }, SHORT[n]),
+      el("div", { class: "bar-track" }, [el("div", { class: `bar-fill ${cls}`, style: `width:${pct}%` })]),
+      el("span", { class: "val" }, v.toFixed(2)),
+    ]);
+  });
+  return el("div", { class: "bars" }, bars);
+}
+
+function backendChips(membership) {
+  return el(
+    "span",
+    { class: "chips" },
+    BK.map(([n, cls]) =>
+      el("span", { class: `chip ${cls} ` + (membership[n] ? "on" : "off") }, SHORT[n])
+    )
+  );
+}
+
+// ---- Browse ---------------------------------------------------------------
+function renderBrowse() {
+  const filter = $("#browse-filter").value.trim().toLowerCase();
+  const rows = MEMORIES.filter((m) => {
+    if (!filter) return true;
+    return (
+      m.item_id.toLowerCase().includes(filter) ||
+      (m.content || "").toLowerCase().includes(filter) ||
+      (m.tags || []).join(" ").toLowerCase().includes(filter)
+    );
+  });
+  const { key, dir } = browseSort;
+  rows.sort((a, b) => {
+    let av, bv;
+    if (key === "tags") { av = (a.tags || []).join(","); bv = (b.tags || []).join(","); }
+    else { av = a[key]; bv = b[key]; }
+    if (av < bv) return -dir;
+    if (av > bv) return dir;
+    return 0;
+  });
+  const tbody = $("#browse-rows");
+  tbody.textContent = "";
+  for (const m of rows) {
+    const tr = el("tr", { on: { click: () => openDetail(m) } }, [
+      el("td", { class: "id" }, m.item_id),
+      el("td", { class: "content" }, m.snippet),
+      el("td", { class: "dim" }, (m.tags || []).map((t) => el("span", { class: "tag" }, t))),
+      el("td", { class: "dim" }, fmtTs(m.timestamp)),
+      el("td", { class: "dim" }, String(m.version)),
+      el("td", {}, backendChips(m.membership)),
+    ]);
+    tbody.append(tr);
+  }
+}
+$("#browse-filter").addEventListener("input", renderBrowse);
+$$(".grid th[data-sort]").forEach((th) =>
+  th.addEventListener("click", () => {
+    const key = th.dataset.sort;
+    browseSort = { key, dir: browseSort.key === key ? -browseSort.dir : 1 };
+    renderBrowse();
+  })
+);
+
+// ---- detail modal ---------------------------------------------------------
+function openDetail(m) {
+  const body = $("#modal-body");
+  body.textContent = "";
+  body.append(el("h2", {}, m.item_id));
+  body.append(el("div", { class: "snippet" }, ""));
+
+  const kv = el("div", { class: "kv" });
+  const add = (k, v) => { kv.append(el("span", { class: "k" }, k)); kv.append(el("span", {}, v)); };
+  add("tags", (m.tags || []).join(", ") || "—");
+  add("timestamp", `${fmtTs(m.timestamp)} (${m.timestamp})`);
+  add("version", String(m.version));
+  add("relevancy", String(m.relevancy));
+  add("source", m.source || "—");
+  add("backends", BK.filter(([n]) => m.membership[n]).map(([n]) => SHORT[n]).join(", ") || "none");
+  if (m.okf && (m.okf.title || m.okf.type || m.okf.resource)) {
+    add("okf.title", m.okf.title || "—");
+    add("okf.type", m.okf.type || "—");
+    add("okf.resource", m.okf.resource || "—");
+  }
+  body.append(kv);
+
+  if (m.edges && m.edges.length) {
+    const edges = el("div", { class: "edges" }, [el("div", { class: "label" }, "graph edges")]);
+    for (const e of m.edges) {
+      edges.append(
+        el("div", { class: "edge" }, [
+          el("span", { class: "rel" }, e.relation),
+          " → ",
+          el("span", { class: "tgt" }, e.target),
+          e.anchor ? `  (anchor: "${e.anchor}")` : "",
+        ])
+      );
+    }
+    body.append(edges);
+  }
+
+  body.append(el("div", { class: "label", style: "margin-top:12px" }, "full content"));
+  body.append(el("pre", {}, m.content || ""));
+  body.append(el("div", { class: "label", style: "margin-top:12px" }, "full metadata"));
+  body.append(el("pre", {}, JSON.stringify(m.metadata || {}, null, 2)));
+  $("#modal").classList.remove("hidden");
+}
+$("#modal-close").addEventListener("click", () => $("#modal").classList.add("hidden"));
+$("#modal").addEventListener("click", (e) => { if (e.target.id === "modal") $("#modal").classList.add("hidden"); });
+
+// ---- Routing-effectiveness ------------------------------------------------
+function renderRouting() {
+  const flaggedOnly = $("#routing-flagged-only").checked;
+  const rows = MEMORIES.filter((m) => !flaggedOnly || m.routing.flagged);
+  const box = $("#routing-rows");
+  box.textContent = "";
+  const t = SUMMARY ? SUMMARY.margin_threshold : 1.0;
+  for (const m of rows) {
+    const r = m.routing;
+    const head = el("div", { class: "card-head" }, [
+      el("span", { class: "id" }, m.item_id),
+      r.flagged ? el("span", { class: "flag" }, "⚠ flagged") : el("span", { class: "hint" }, "ok"),
+    ]);
+
+    const actual = el("div", {}, [el("div", { class: "label" }, "actual landing"),
+      backendChips(m.membership)]);
+    const predicted = el("div", {}, [
+      el("div", { class: "label" }, `predicted classify → ${SHORT[r.classify]}`),
+      scoreBars(r.scores, r.classify),
+      el("div", { class: "margin" + (r.ambiguous ? " low" : "") }, `margin ${r.margin.toFixed(2)} (thr ${t})`),
+    ]);
+    const plan = el("div", {}, [el("div", { class: "label" }, "write_plan"),
+      el("span", { class: "chips" }, BK.map(([n, cls]) =>
+        el("span", { class: `chip ${cls} ` + (r.write_plan.includes(n) ? "on" : "off") }, SHORT[n])))]);
+
+    const card = el("div", { class: "card" + (r.flagged ? " flagged" : "") }, [
+      head,
+      el("div", { class: "snippet" }, m.snippet),
+      el("div", { class: "row" }, [actual, predicted, plan]),
+    ]);
+
+    if (r.flag_reasons && r.flag_reasons.length) {
+      const ul = el("ul", { class: "reasons" });
+      r.flag_reasons.forEach((x) => ul.append(el("li", {}, x)));
+      card.append(ul);
+    }
+    if (r.intent_mismatch) {
+      card.append(el("div", { class: "mismatch" },
+        `intent mismatch: human-labelled "${r.human_intent}" but classifier routes to "${r.classify}"`));
+    }
+    card.append(el("button", { class: "capture-btn", on: { click: () => captureRoute(m) } },
+      "capture as routing eval case"));
+    box.append(card);
+  }
+}
+$("#routing-flagged-only").addEventListener("change", renderRouting);
+
+async function captureRoute(m) {
+  try {
+    const res = await postJSON("/api/capture", {
+      kind: "route",
+      content: m.content,
+      expected: { backend: m.routing.classify, write_plan: m.routing.write_plan },
+      note: `captured from routing view for ${m.item_id}`,
+    });
+    toast(`captured route case #${res.count} → ${res.path.split("/").pop()}`);
+  } catch (e) {
+    toast("capture failed: " + e.message, true);
+  }
+}
+
+// ---- Query Probe ----------------------------------------------------------
+async function runProbe() {
+  const q = $("#probe-q").value;
+  const k = $("#probe-k").value || 5;
+  if (!q.trim()) { toast("enter a query", true); return; }
+  let data;
+  try { data = await getJSON(`/api/probe?q=${encodeURIComponent(q)}&k=${encodeURIComponent(k)}`); }
+  catch (e) { toast("probe failed: " + e.message, true); return; }
+
+  const d = data.decision;
+  const dec = $("#probe-decision");
+  dec.textContent = "";
+  dec.append(
+    el("div", { class: "decision-box" }, [
+      el("div", {}, [el("div", { class: "label" }, "routing decision"),
+        el("div", {}, [el("span", { class: "id" }, `classify → ${SHORT[d.choice]}`)])]),
+      scoreBars(d.scores, d.choice),
+      el("div", { class: "margin" + (d.margin < (SUMMARY ? SUMMARY.margin_threshold : 1) ? " low" : "") },
+        `margin ${d.margin.toFixed(2)}`),
+      el("button", { class: "capture-btn", on: { click: () => captureRetrieval(data) } },
+        "capture as retrieval eval case"),
+    ])
+  );
+
+  const cols = $("#probe-columns");
+  cols.textContent = "";
+  for (const [n, cls] of BK) {
+    cols.append(probeColumn(cls, n, data.per_backend[n], data.score_semantics[n], data.errors[n]));
+  }
+  cols.append(probeColumn("engine", "engine (RouterStore.search)", data.engine, "routed: the backend the query was sent to", data.engine_error));
+}
+function probeColumn(cls, title, hits, sem, err) {
+  const col = el("div", { class: "col" }, [el("h3", { class: cls }, title), el("div", { class: "sem" }, sem || "")]);
+  if (err) { col.append(el("div", { class: "err" }, err)); return col; }
+  if (!hits || !hits.length) { col.append(el("div", { class: "hint" }, "no hits")); return col; }
+  for (const h of hits) {
+    col.append(el("div", { class: "hit" }, [
+      el("span", { class: "hit-id" }, h.item_id),
+      el("span", { class: "hit-meta" }, `  #${h.rank}  score ${Number(h.score).toFixed(3)}`),
+      el("span", { class: "hit-snip" }, h.snippet),
+    ]));
+  }
+  return col;
+}
+async function captureRetrieval(data) {
+  const ids = (data.engine || []).map((h) => h.item_id);
+  try {
+    const res = await postJSON("/api/capture", {
+      kind: "retrieval",
+      query: data.query,
+      expected: { backend: data.decision.choice, ids },
+      note: `captured from probe view (k=${data.k})`,
+    });
+    toast(`captured retrieval case #${res.count} → ${res.path.split("/").pop()}`);
+  } catch (e) {
+    toast("capture failed: " + e.message, true);
+  }
+}
+$("#probe-go").addEventListener("click", runProbe);
+$("#probe-q").addEventListener("keydown", (e) => { if (e.key === "Enter") runProbe(); });
+
+// ---- boot -----------------------------------------------------------------
+async function boot() {
+  try {
+    SUMMARY = await getJSON("/api/summary");
+    renderSummary(SUMMARY);
+    MEMORIES = (await getJSON("/api/memories")).memories;
+    renderBrowse();
+    renderRouting();
+  } catch (e) {
+    $("#summary").textContent = "failed to load: " + e.message;
+  }
+}
+boot();

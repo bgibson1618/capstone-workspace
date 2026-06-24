@@ -15,6 +15,19 @@ backends) + `eval/memeval/router.py`. Teammates: Keith @kmazanec (harness/OpenCo
 ## Eval philosophy — what actually matters (2026-06-24)
 We build out the eval set as we go — fast offline "unit evals" (the routing bake-off, retrieval evals) run between full pipeline runs — **but those results are provisional data points, not verdicts.** The **only** metric that decides anything is the **SWE-Bench-CL pipeline** (`make pipeline`). Until we get real SWE-Bench-CL feedback, **keep every option on the table** — do not over-fit to, or descope candidates based on, the small unit-eval sets. *(Concretely: routing evals are **English-focused for now**; non-English / multilingual cases are **deferred** — the `GAP:needs-learning` bucket is a 3-case multilingual edge the English coding workload doesn't exercise, and semantic routing's only measured edge over rules is on exactly those.)*
 
+## CURRENT STATUS (2026-06-24) — read this first
+**Active branch:** `agent-memory-harness` is on `stores/backend-upgrades` (off `main`, merged up to **#132 `cc18a4d`** — the SWE-Bench-CL grader fixes). All pipeline experiments + commits go here; results isolate to `results/vbranch-stores-backend-upgrades-<sha>/`.
+
+**Shipped this session (2026-06-24):**
+- **Router-inspection UI** — `capstone-workspace/router_ui/` (stdlib web tool, run via `./router_ui/run.sh`): browse plugin-saved memories + evaluate router routing. Built + migrated here from the harness; reads only via `memeval` public store/router APIs; 17 tests green.
+- **Semantic routing — investigated eval-first, DEFERRED.** A Voyage semantic classifier only beats the rule classifier on the 3 multilingual `GAP:needs-learning` cases and regresses every English bucket; a rules-first / semantic-fallback hybrid can't separate them (rules fire confident-but-wrong on code tokens, not silent). **Decision: focus English, defer non-English/multilingual.** The bake-off infra (`semantic-voyage` / `hybrid-voyage` / `semantic-minilm` strategies + `HybridClassifier`) is **parked** on the branch (`eval/memeval/stores/tests/test_routing_bakeoff.py`); the MiniLM encoder seam is left open for a future re-test.
+
+**Pipeline status:** the full `make pipeline` ran overnight (baseline) but on `238f20e` with the **pre-#132 grader** → its **accuracy=0 is a grader artifact, NOT real** (efficiency +0.4967 base→final IS real — memory cut token cost). The branch is now merged past #132 and staged.
+
+**⭐ SINGLE NEXT TASK:** **re-run the full `make pipeline`** on `stores/backend-upgrades` for the first *trustworthy* accuracy number — **but only once the team's in-flight grader fixes land** (merge `main` again first). Until then, do NOT run (Brent's call). Per the Eval philosophy above, the SWE-Bench-CL pipeline is the only metric that decides anything.
+
+**Pipeline how-to:** `cd agent-memory-harness && make setup` once; the run drives the `claude` CLI against an isolated `eval/.claude-sandbox` (one-time `/login`); always pass a small `--budget-usd`; OpenRouter + Voyage keys live in `agent-memory-harness/.env`.
+
 ## Workspace split (important)
 - **`~/projects/agent-memory-harness`** — the SHARED code repo. Brent's real deliverables live
   here; changes ship via small PRs on `stores/*` / `router/*` branches.
@@ -36,7 +49,7 @@ We build out the eval set as we go — fast offline "unit evals" (the routing ba
   (3) copy `.kb/` entries generated here into the project's `.kb/KB-storage.md` when ready to share. New
   project slash commands appear only after a session restart (discovered at session start).
 
-## Current state: core build SHIPPED; routing+embedder slice + write-path arc COMPLETE & MERGED; routed writes LIVE on the product path via RouterStore (#76); the **full solo graph thread is DONE** (Neo4j Phase-A #111) and the **Backend Durability Hardening Arc shipped & MERGED** (#117, squash `9d77ecb`); a research+architecture-reconcile Workflow produced 7 storage ADRs (#118, MERGED, squash `6b03d32`) + parked Neo4j Phase B; **headline remaining gate = the captained benchmark metric run** (see Active work)
+## Current state: core build SHIPPED; routing+embedder slice + write-path arc COMPLETE & MERGED; routed writes LIVE on the product path via RouterStore (#76); the **full solo graph thread is DONE** (Neo4j Phase-A #111) and the **Backend Durability Hardening Arc shipped & MERGED** (#117, squash `9d77ecb`); a research+architecture-reconcile Workflow produced 7 storage ADRs (#118, MERGED, squash `6b03d32`) + parked Neo4j Phase B; **headline remaining gate = the captained benchmark metric run** (see Active work) *(SUPERSEDED — see "CURRENT STATUS (2026-06-24)" at the top for live status + the single next task.)*
 The original four owned components are implemented, **stdlib-offline** (real paths behind lazy injection
 seams), **eval-first**, independently reviewed, and squash-merged to `main` (PRs **#5–#12**). Since then a
 larger extension arc (cascade meta-index, speed/accuracy profiles, eval growth, learned classifiers +
@@ -50,7 +63,7 @@ real embedder) has shipped PRs **#17, #23, #27, #28, #29, #34, #41** — current
 `main` is clean and synced; all tests green. An independent `/sanity` (Codex) pass was run and
 its findings remediated (durable eval committed, docs reconciled, team items captured below).
 
-## Active work: routing+embedder slice + write-path arc COMPLETE & MERGED; write-routing LIVE on the product path via RouterStore (#76); the graph arc is FULLY DONE (durability→delete→e2e #92/#93/#95/#99/#101 MERGED + Neo4j Phase-A #111 MERGED); the **Backend Durability Hardening Arc shipped & MERGED (#117, squash `9d77ecb`)** + a research/architecture-reconcile Workflow shipped 7 storage ADRs (#118, MERGED, squash `6b03d32`) and parked Neo4j Phase B; **next = the captained benchmark run (the headline gate)** (updated 2026-06-23)
+## Active work: routing+embedder slice + write-path arc COMPLETE & MERGED; write-routing LIVE on the product path via RouterStore (#76); the graph arc is FULLY DONE (durability→delete→e2e #92/#93/#95/#99/#101 MERGED + Neo4j Phase-A #111 MERGED); the **Backend Durability Hardening Arc shipped & MERGED (#117, squash `9d77ecb`)** + a research/architecture-reconcile Workflow shipped 7 storage ADRs (#118, MERGED, squash `6b03d32`) and parked Neo4j Phase B; **next = the captained benchmark run (the headline gate)** (updated 2026-06-23) *(SUPERSEDED — see "CURRENT STATUS (2026-06-24)" at the top for live status + the single next task.)*
 Building the D008 cascade + the speed/accuracy profile seam, eval-first, run as the **agent-roster
 orchestrator** (delegating to architect/implementer/verifier roster runs; see DECISION_LOG D008 +
 D016 for the ruled design, D017 for IRCoT scoped-out).

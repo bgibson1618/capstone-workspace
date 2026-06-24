@@ -1,12 +1,19 @@
+> **⚠️ LENS CORRECTION (Brent, 2026-06-23) — read first.** This review was briefed with stdlib-only /
+> in-process as "hard constraints." That was an over-statement: **stdlib-offline is the project's TEST FLOOR,
+> not a feature ceiling.** The empirical findings below remain valid and useful as a **design risk-map**; the
+> "VERDICT: FAIL / reject / confirms-D043" framing is **superseded** — under the corrected lens these are
+> **candidate upgrades pending eval-first measurement**, and D043 (FalkorDB) and D039 (Bolt) are reopened.
+> See `DECISION_LOG.md` **D044**.
+
 # Cross-Vendor Accuracy Review — `router_architecture_recommendations.md`
 
 > **What this is:** the adjudicated output of a 4-vendor accuracy check (2026-06-23) of the
 > research-agent doc `router_architecture_recommendations.md`. Inputs: 3 independent researchers on
 > **claude + codex + antigravity** backends (observable `agent-roster` runs, blind to the project's
 > prior FalkorDB research), consolidated by a **Codex adjudicating verifier**. `VERDICT: FAIL` below
-> is the **doc's grade as authoritative architecture advice** (it is misleading for this project) —
-> not a process failure. The review independently **confirms D043**. Decision recorded in
-> `DECISION_LOG.md` **D044**; the reviewed doc is retained, stamped NOT-ADOPTED.
+> was the review's grade **under the briefed (over-stated) lens — superseded by the LENS CORRECTION above.**
+> The findings remain valid as a **design risk-map**. Decision recorded in `DECISION_LOG.md` **D044**;
+> the reviewed doc is retained, stamped **CANDIDATE-UPGRADE ROADMAP (pending eval).**
 
 ---
 

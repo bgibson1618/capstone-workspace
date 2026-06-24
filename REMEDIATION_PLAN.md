@@ -127,8 +127,9 @@ They are now **LIVE on the product path** — the plugin consumes them via `Rout
   `[:REL]` graph from the persisted `okf_links` SSOT (**`MATCH` endpoints, never `MERGE`** — the D041 R1 bug),
   native Cypher/GDS search; the transient-delegation path stays the default + regression baseline. **HARD
   prereq = the captained live `NEO4J_TEST_URI` run.** Scoped in `GRAPH_STORE_SCOPE.md`.
-- **FalkorDB-as-a-backend — REJECTED (D043);** kept ONLY as a possible CI integration harness. The draft
-  `FalkorGraphStore` re-introduced D041's fixed placeholder + seq bugs; `falkordblite` is a managed
+- **FalkorDB-as-a-backend — REOPENED as a candidate (D044), pending eval-first measurement.** Design risks to
+  engineer around (stdlib stays the offline test floor): the draft
+  `FalkorGraphStore` re-introduced D041's fixed placeholder + seq bugs (must `MATCH`-never-`MERGE`); `falkordblite` is a managed
   **subprocess** (not in-process), Python 3.12+/Linux-macOS/libomp (NOT zero-dep stdlib). Research:
   `docs/falkordb_comparison.md`, `docs/local_stores_performance.md` (both verified PARTIAL).
 
@@ -165,7 +166,8 @@ They are now **LIVE on the product path** — the plugin consumes them via `Rout
   a pre-existing residual, not a regression — + markdown MEDs).
 - **2026-06-23: research + architecture-reconcile Workflow — DONE (D043).** `docs/falkordb_comparison.md`
   + `docs/local_stores_performance.md` verified (both PARTIAL — Falkor draft re-introduced D041's fixed bugs
-  + is subprocess/not-stdlib → CI harness only; FTS5-cache doesn't fix durability, validating the D042
+  (design risk: MATCH-never-MERGE) — FalkorDB REOPENED D044 as a candidate graph backend pending eval (stdlib
+  stays the test floor); FTS5-cache doesn't fix durability, validating the D042
   direction). 8 backend-arch drifts → 7 storage ADRs (ADR-storage-003..009, **PR #118 MERGED, squash `6b03d32`**).
   architecture.md reconciled on LOCAL `docs/architecture-reconcile` (01562b3, UNPUSHED — `[CONTRACT]`, a
   team-meeting governance call). Neo4j **Phase-B plan drafted + PARKED** (gated on the captained live run).

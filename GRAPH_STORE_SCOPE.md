@@ -47,7 +47,7 @@
 ## The core call (panel unanimous)
 **Relational-retrieval ACCURACY lives in the edge model + traversal — fully testable in-memory,
 zero-dependency. Neo4j is INFRASTRUCTURE, not accuracy; it ships LAST and its only job is to reproduce
-the in-memory numbers (proven a no-op on accuracy), not improve them.** Building Neo4j first spends the
+the in-memory numbers (proven a no-op on accuracy), not improve them.** *(Superseded by the D039/D041 FRAMING UPDATE above — this "infra-only / no-op on accuracy" framing is the Phase-A FLOOR, not the ceiling: a native graph (Neo4j-GDS or FalkorDB) is now a **candidate accuracy upgrade pending eval**, D044.)* Building Neo4j first spends the
 hardest engineering on the part that moves no metric and asks reviewers to trust a DB they can't run in
 CI — inverting the eval-first ethos. (REMEDIATION_PLAN already says "Neo4j is infra, not automatic accuracy.")
 

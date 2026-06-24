@@ -1,17 +1,17 @@
-> **⚠️ STATUS: RESEARCH INPUT — NOT ADOPTED (2026-06-23).** This is an external research-agent draft,
-> retained as evidence, not an authoritative plan. A cross-vendor accuracy review — 3 independent
-> researchers (claude + codex + antigravity backends, blind to the project's prior FalkorDB research)
-> plus a Codex adjudicating verifier, each grounding every claim in the real code and the project's
-> 4 hard constraints — found it **misleading as advice for this project**: it presents non-stdlib /
-> subprocess / network components as the default path, inverting the stdlib-only, in-process, offline,
-> cross-process-durable constraints the whole test suite rests on. **Do NOT implement as written.**
-> Most importantly, **Rec 2 (FalkorDB / `falkordblite`) is rejected** — it requires Python ≥3.12 (this
-> project targets ≥3.11), manages a `redis-server` subprocess (not in-process / not stdlib), and speaks
-> a Redis/FalkorDB API the `neo4j` Bolt driver cannot drive, so it **cannot** replace `FakeBoltDriver`.
-> This independently **confirms D043**. Carry-forward only: the no-generative-LLM-routing principle and
-> embedders-behind-seams (both already built in `router.py`), and FTS5 as a *future, feature-detected,
-> parity-preserving* spike (FTS5-as-cache does **not** fix durability — only FTS5-as-SSOT would).
-> Full adjudication → `docs/router_recommendations_cross_vendor_review.md`. Decision → `DECISION_LOG.md` **D044**.
+> **⚠️ STATUS: CANDIDATE-UPGRADE ROADMAP — UNDER EVALUATION (reframed 2026-06-23).** External research-agent
+> draft. A cross-vendor accuracy review (3 researchers on claude/codex/antigravity + a Codex adjudicator)
+> pressure-tested it. **Important:** that review was briefed with stdlib-only / in-process as hard constraints
+> — an over-statement. The corrected lens: **stdlib-offline is the TEST FLOOR, not a feature ceiling**; these
+> recommendations are **candidate upgrades to evaluate eval-first**, not constraint-rejected. Design risks to
+> engineer around (from the review): **Rec 2 (FalkorDB)** — needs Python ≥3.12 (bumpable) + an embedded
+> `redis-server` (fine for a feature backend; the stdlib in-memory `GraphStore` stays the test floor); it
+> speaks Redis not Bolt, so it's a **NEW backend** (`FalkorGraphStore` + its own tests) that must
+> `MATCH`-never-`MERGE` to avoid re-introducing D041's bug. **Rec 3 (usearch-in-BLOB)** — concurrency hazard,
+> needs an index-coherence design; trivial ANN-SQL ordering bug. **Rec 4 (FTS5)** — diverges from the shared
+> `idf_coverage` scorer; FTS5-as-SSOT also addresses durability. **Rec 1 (MiniLM)** — the no-LLM-routing
+> principle is already built; MiniLM-as-an-option is an eval question. **Not yet adopted, not rejected —
+> pending eval.** Full review (a risk-map) → `docs/router_recommendations_cross_vendor_review.md`. Decisions →
+> `DECISION_LOG.md` **D044** (reopens D043/D039).
 >
 > *(Original research-agent content preserved verbatim below.)*
 

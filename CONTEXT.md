@@ -12,6 +12,14 @@ Relevancy, Accuracy). Shared repo: github.com/kenhuangus/agent-memory-harness (*
 backends) + `eval/memeval/router.py`. Teammates: Keith @kmazanec (harness/OpenCode), Ken
 @kenhuangus (eval infra + repo owner), Scott B. @NerdAlert58 (dreaming).
 
+## North Star (AUTHORITATIVE — set by Brent 2026-06-24)
+**Build the most effective memory harness possible. Full stop.** This goal overrides everything else below it:
+- **Dependencies are not a constraint.** If a heavier/paid/native dep (FalkorDB, sentence-transformers, sqlite-vec, usearch, Voyage, a reranker, …) makes the harness more effective, we add it. Stdlib-offline stays only as a *CI convenience* (an air-gapped test path) — **never a feature ceiling**; if it ever blocks the best system, the system wins.
+- **Earlier decisions are revisable and disposable.** The `DECISION_LOG` is a record, not a contract. If new information points to a better design, we **contradict and retire** the old decision — D013 (ANN-deferred), D021/D022 (semantic-routing deferred), D028 (fusion verdict), D039/D043/D044 are all reopenable and droppable. A past decision is never a reason to not do the better thing.
+- **Code is rewritable.** If whole sections (the router classifier, a store backend, the shared scorer / cross-backend parity model) need a rewrite to be best, we rewrite them.
+- **Only two real constraints:** (1) **empirical merit** — the SWE-Bench-CL `make pipeline` run is the arbiter; build options, let the benchmark decide; and (2) **engineering correctness** — known bugs/hazards (MATCH-never-MERGE, the ANN `ORDER BY` ranking bug, cross-process index coherence) are problems to *solve*, not excuses to defer.
+- **Posture: build, measure, keep the best.** Bias toward standing options up, not deferring them on effort/precedent/current-scale. *Engineering caveat (not conservatism):* if the benchmark can't yet show an upgrade's value (e.g. ANN over a 3–5-row store), the response is to **scale the eval workload so it's measurable** — not to skip the upgrade.
+
 ## Eval philosophy — what actually matters (2026-06-24)
 We build out the eval set as we go — fast offline "unit evals" (the routing bake-off, retrieval evals) run between full pipeline runs — **but those results are provisional data points, not verdicts.** The **only** metric that decides anything is the **SWE-Bench-CL pipeline** (`make pipeline`). Until we get real SWE-Bench-CL feedback, **keep every option on the table** — do not over-fit to, or descope candidates based on, the small unit-eval sets. *(Concretely: routing evals are **English-focused for now**; non-English / multilingual cases are **deferred** — the `GAP:needs-learning` bucket is a 3-case multilingual edge the English coding workload doesn't exercise, and semantic routing's only measured edge over rules is on exactly those.)*
 

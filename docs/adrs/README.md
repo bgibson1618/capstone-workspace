@@ -8,7 +8,7 @@
 > domain names from it and stops if they drift.
 >
 > Brent owns the **storage** domain (P3 — stores + router). Capstone's durable "why" record is
-> `DECISION_LOG.md` (D001–D029); this dir exists for the `/kb` dependency + any ADR drafts Brent wants to
+> `DECISION_LOG.md` (D001–D044); this dir exists for the `/kb` dependency + any ADR drafts Brent wants to
 > stage privately before syncing to the project (`ADR-<domain>-NNN-<slug>.md`).
 
 ## Naming convention — by workstream domain

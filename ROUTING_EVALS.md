@@ -9,9 +9,14 @@ provenance record; the **runnable source of truth is that committed fixture.** *
 > **2026-06-21 update — superseding the original sections below.** The eval has since GROWN past the
 > original 41-case blind set (D018, PR #28): a **blind multi-lens fan-out** (5 firewalled generators ×
 > distinct lenses — surface traps / ambiguity / messy phrasing / boundary / multilingual → synthesizer)
-> added a separate measured **`D018_CASES` pool (42 cases → fixture now 73 total)**, exposing the router's
-> **markdown over-routing bias**. Buckets: 13 AGREE · 9 GAP:cheap-fix · 3 GAP:needs-learning (multilingual)
-> · 17 contested(⚠). The **9 cheap-fix gaps were then fixed** by 7 narrow router rules (D018 cheap-fix,
+> added a separate measured **`D018_CASES` pool (44 cases — 42 blind-generated + 2 hand-authored
+> "D018-harden" regression guards) → fixture now 85 total** (41 `BLIND_CASES`, 31 hard-graded, + 44
+> `D018_CASES`; matches the committed fixture's `_EXPECTED_HARD=31` / `_EXPECTED_D018=44` locks), exposing
+> the router's **markdown over-routing bias**. Buckets (of the 42 blind-generated): 13 AGREE · 9
+> GAP:cheap-fix · 3 GAP:needs-learning (multilingual) · 17 contested(⚠). **Multilingual is out of scope for
+> now** — per the English-focus eval decision (`CONTEXT.md`, 2026-06-24), the 3 `GAP:needs-learning`
+> multilingual cases are **deferred** (the English coding workload doesn't exercise them); they are
+> measured-only, not a current target. The **9 cheap-fix gaps were then fixed** by 7 narrow router rules (D018 cheap-fix,
 > PR #29) — speed profile **50%→73%** on the D018 set, golden 5→12, BLIND unchanged at 28/31.
 > **Still open:** the 3 multilingual `GAP:needs-learning` and the 17 contested labels (measured, awaiting a
 > separate adjudication pass). **Update (D021/D022):** the semantic exemplar classifier (PR3b-2, #49 merged)
@@ -92,7 +97,7 @@ The remaining 5 misses are NOT clean bugs:
 - [x] round 1 hardening done (blind adversarial, 58% → 83%) — see above
 - [x] Bucket B contested labels adjudicated (D012) and tested
 - [x] **durable runner committed** → `eval/memeval/stores/tests/test_routing_evals.py` (the 41 blind queries + a reproducible scorer; current router = **90% agreement on hard cases**, the 3 disagreements documented as adjudicated/known-limits). Reproduce: `cd eval && python3 -m memeval.stores.tests.test_routing_evals`
-- [x] grow toward ~50 cases — SUPERSEDED: D018 grew the fixture to **73** cases (blind multi-lens fan-out)
+- [x] grow toward ~50 cases — SUPERSEDED: D018 grew the fixture to **85** cases (41 `BLIND_CASES` + 44 `D018_CASES`; blind multi-lens fan-out)
 - [ ] harvest real retrieval queries from trajectories; transcode to a JSONL fixture (gated on the harness
       integration — still open; the inline-tuple fixture is the source of truth meanwhile)
 - [ ] after first real runs: harvest real retrieval queries from trajectories, add them

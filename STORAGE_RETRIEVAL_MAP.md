@@ -11,10 +11,11 @@
 > - The graph store gained a **`path=` SQLite durability seam (#92/D035)**, **delete across all backends
 >   (#93/D036)**, an **e2e CRUD test across all 3 durable backends (#95/D037)**, and **`delete` is now on
 >   the `MemoryStore` protocol (#99 + #101/D038)**. The durability→delete→e2e arc is merged.
-> - **The ONE thing below still true:** the *live plugin's* `GraphStore` is built **without** `path=`
->   (`contract.py:97`), so the plugin's graph is in-RAM until Keith's one-line `build_store` graph-path
->   change lands — that is the only remaining "not-live" item. `MemoryFramework` is also still a stub, but
->   the live plugin/bench path bypasses it (uses `build_store`).
+> - **That last "not-live" item is now ALSO resolved (was: graph built without `path=`).** The
+>   `build_store` graph-path wiring landed — the live plugin now builds `GraphStore(path=…/graph.db)`
+>   (`contract.py:100`; #92/D042, verified end-to-end), so the plugin's graph is **durable**, not in-RAM.
+>   Nothing in the map below remains "not-live." `MemoryFramework` is still a stub, but the live
+>   plugin/bench path bypasses it (uses `build_store`).
 >
 > The data-flow SHAPES below remain a useful reference; the per-node STATUS tags are the dated snapshot.
 >
@@ -39,16 +40,17 @@ configured `Router`, and the plugin drives it:
 
 1. **Plugin `_Engine.remember`** — **LIVE**, routes through **`RouterStore.write` → `Router.write`**
    (dedup + `base_all` fan-out to markdown+vectors+graph). NOT markdown-only anymore.
-   (`client.py` `remember` → `self._store.write`; `contract.py:99`)
+   (`client.py` `remember` → `self._store.write`; `contract.py:100`)
 2. **#63 native pipeline** (`store.write`) — a `RouterStore` runs end-to-end **when injected**
    (`store=RouterStore`, D025); the bare default is still `InMemoryStore`.
 3. **`Router.write` / `route_write`** (base_all + dedup) — **LIVE** via RouterStore on the plugin path.
 4. **`RouterStore`** (#66) — **LIVE**: it's what `build_store` returns; the plugin + dreaming consume it.
 
-So the plugin's `remember` DOES land routed, deduped, multi-index writes. The remaining gap is durability
-of the *plugin's graph specifically*: its `GraphStore` is built without `path=` (`contract.py:97`), so its
-nodes are in-RAM until the `build_store` graph-path line lands (Keith). The vectors + markdown backends
-already persist; the graph store *can* (the `path=` seam, #92) — it just isn't wired in the plugin yet.
+So the plugin's `remember` DOES land routed, deduped, multi-index writes — **and all three backends now
+persist.** The former gap (the *plugin's graph specifically* being in-RAM) is **closed**: the `build_store`
+graph-path wiring landed, so the plugin builds `GraphStore(path=…/graph.db)` (`contract.py:100`; the `path=`
+seam from #92/D042, verified end-to-end). Vectors (`memory.db`) + markdown (`markdown/`) + graph (`graph.db`)
+are all durable. (Authoritative current state: `DECISION_LOG.md` + `CONTEXT.md`.)
 
 The **read** path was always routed: plugin `recall()` -> `Router.route(query)` -> one backend's
 `.search()` (or the cascade/fusion view per the auto-selected profile).

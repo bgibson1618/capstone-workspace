@@ -19,7 +19,7 @@ We build out the eval set as we go — fast offline "unit evals" (the routing ba
 - **`~/projects/agent-memory-harness`** — the SHARED code repo. Brent's real deliverables live
   here; changes ship via small PRs on `stores/*` / `router/*` branches.
 - **`~/projects/capstone-workspace`** (this dir) — Brent's PRIVATE planning/evidence/scratch,
-  NOT in the shared repo. Holds: this `CONTEXT.md`, `DECISION_LOG.md` (D001–D043, the AI
+  NOT in the shared repo. Holds: this `CONTEXT.md`, `DECISION_LOG.md` (D001–D044, the AI
   suggested/accepted/changed/rejected log), `ROUTING_EVALS.md`, `TEAM_NOTES.md`, and `work/` (gitignored
   scratch: delegate run dirs + throwaway eval scripts). The agent file-memory (`memory/` + `MEMORY.md`)
   lives separately under `~/.claude/projects/-home-brent-gibson-projects-capstone-workspace/memory/`

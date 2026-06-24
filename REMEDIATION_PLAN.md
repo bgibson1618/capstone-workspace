@@ -94,12 +94,16 @@ They are now **LIVE on the product path** — the plugin consumes them via `Rout
   - **bge-m3 fallback embedder (PRD-6)** — still missing (an air-gapped open-source embedder behind the `embed=`
     seam; only Voyage + the hashing/Mock default ship). LOW — descope-or-build TBD.
   - **Cross-backend fusion / read-orchestrator (PLAN-7)** — ✅ **DONE + MEASURED (#68 D027, #72 bake-off,
-    D028 captained):** a fusion profile (RRF + score-norm) ships **opt-in** via `Consult2Config`/
-    `fusion_profile` (single-route stays the default). *Correction:* briefly mis-scoped as "single-best by
+    D028 captained):** a fusion profile (RRF + score-norm) ships via `Consult2Config`/
+    `fusion_profile`, and the engine **auto-selects fusion as the offline default** (`VOYAGE_API_KEY`→accuracy
+    / else **fusion** — see ~lines 55–65 + ADR-storage-003); single-route is an explicit profile, not the
+    default. *Correction:* briefly mis-scoped as "single-best by
     design" — the router is a **speed↔accuracy spectrum**; fusion is a wanted config. **Captained verdict
     (D028, PROVISIONAL — small fixtures):** with a real embedder, vectors single-route DOMINATES (recall@5
     1.000) and fusion DILUTES it (0.900) on n=20/34-doc data; `score` > `rrf` (0.900 vs 0.850). Single-route
-    is the current default. **NOT a write-off (Brent's call):** the dilution is plausibly a small-dataset
+    **DOMINATED at these small D028 fixtures**, but **fusion is the shipped offline default** and a
+    re-measure-at-scale candidate — not a verdict to make single-route "the default." **NOT a write-off
+    (Brent's call):** the dilution is plausibly a small-dataset
     artifact — **fusion STAYS in the comparison matrix, to be re-measured at full benchmark scale** (large
     diverse workloads where no single backend dominates may favor it). **Still open:** re-run the matrix at
     full benchmark scale (the real fusion verdict); the fusion→rerank ("accuracy+") tier; named presets; a

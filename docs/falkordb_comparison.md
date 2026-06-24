@@ -1,5 +1,9 @@
 # FalkorDB vs. Neo4j Comparison for Agent Memory Harness
 
+> **⚠️ NOT AUTHORITATIVE.** *Research input — graded PARTIAL by D043; FalkorDB REOPENED as a candidate
+> pending eval (D044). Not an active plan.* (See `DECISION_LOG.md` D043/D044; stdlib-offline stays the
+> test floor, not a feature ceiling.)
+
 This document outlines the architectural comparison between **FalkorDB** and **Neo4j** specifically for the **agent-memory-harness** project, along with a draft implementation of `FalkorGraphStore` satisfying the `MemoryStore` protocol.
 
 ---

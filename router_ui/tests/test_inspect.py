@@ -2,7 +2,13 @@
 anomaly flagging, probe shape, de-dup, edges, capture, and the empty/no-file-creation
 and vector-dim-mismatch degradations.
 
-Run (post-promotion):  cd eval && uv run --no-project python -m pytest memeval/stores/inspect/tests/ -q
+Location: router_ui/tests/ (migrated here from the harness build; was
+memeval/stores/inspect/tests/).
+Run (needs `memeval` importable — the agent-memory-harness venv — and this workspace on
+PYTHONPATH so `router_ui` resolves; the same env router_ui/run.sh sets up, see
+router_ui/README.md "How it runs"):
+    cd ~/projects/capstone-workspace && PYTHONPATH=. python -m pytest router_ui/tests/ -q
+Launch the inspector UI itself with `./router_ui/run.sh` (router_ui/README.md "Run").
 """
 
 from __future__ import annotations

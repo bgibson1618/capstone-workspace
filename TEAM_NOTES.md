@@ -26,6 +26,15 @@ violates the doc, so this isn't a one-person fix.)
 
 ## 2. `project-plan.md` overstates what shipped (production ANN / Neo4j)
 
+> **SUPERSEDED (2026-06-23+).** The "graph deferred / in-memory untyped, real-paid path behind
+> injection seams" framing below is now **STALE for the graph backend**. Since this note: the graph
+> shipped **typed/directional edges** (#81/D030), **durability** via the `path=` SQLite seam
+> (#92/D035), and the **Neo4j Phase-A parity floor merged** (PR **#111, D041**, Bolt transport per
+> D039) — so the graph is now typed/directional **and** durable, and the live plugin builds it with
+> `path=` (`contract.py:100` → `GraphStore(path=…/graph.db)`). Authoritative current state =
+> `CONTEXT.md` + `GRAPH_STORE_SCOPE.md` (Neo4j Phase-B is the only graph thread still parked, gated
+> on the captained live `NEO4J_TEST_URI` run). The original note is kept below as a historical record.
+
 `project-plan.md` (~line 181) reads as if the production pieces — SQLite + a real embedding
 model + HNSW/FAISS, and a Neo4j typed-traversal graph — were delivered for my slice. What
 actually shipped is honest **stdlib v1**: char-n-gram hashing + brute-force cosine, and an

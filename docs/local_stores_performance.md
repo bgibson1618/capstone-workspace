@@ -1,5 +1,10 @@
 # Performance Optimizations for Local Stores (SQLite & Markdown)
 
+> **⚠️ NOT AUTHORITATIVE.** *Research input — graded PARTIAL by D043 (the FTS5-cache approach doesn't fix
+> durability — validates D042); part of the same research batch whose FalkorDB output was REOPENED as a
+> candidate pending eval (D044). Not an active plan.* (See `DECISION_LOG.md` D043/D044; stdlib-offline stays
+> the test floor, not a feature ceiling.)
+
 This document details recommendations for optimizing the performance of the **`SqliteVectorStore`** and **`MarkdownStore`** in the **agent-memory-harness** project.
 
 ---

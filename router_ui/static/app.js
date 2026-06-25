@@ -105,10 +105,10 @@ function backendChips(membership, memory = null) {
         "button",
         {
           type: "button",
-          class: `${klass} drill-chip`,
-          title: `${BACKEND_LABEL[n]} raw retrieval for ${memory.item_id}`,
-          "aria-label": `${BACKEND_LABEL[n]} raw retrieval for ${memory.item_id}`,
-          on: { click: (e) => { e.stopPropagation(); openBackendDrill(memory, n); } },
+          class: klass,
+          title: `view ${BACKEND_LABEL[n]} stored artifact for ${memory.item_id}`,
+          "aria-label": `view ${BACKEND_LABEL[n]} stored artifact for ${memory.item_id}`,
+          on: { click: (e) => { e.stopPropagation(); openArtifactPopover(memory, n); } },
         },
         SHORT[n]
       );
@@ -151,57 +151,140 @@ function renderBrowse() {
   }
 }
 
-async function openBackendDrill(m, backend) {
-  const box = $("#browse-drill");
-  const label = BACKEND_LABEL[backend] || backend;
-  box.classList.remove("hidden");
-  box.textContent = "";
-  box.append(drillHeader(m.item_id, label, backendClass(backend)));
-  box.append(el("div", { class: "hint" }, "loading…"));
-  try {
-    const data = await getJSON(
-      `/api/backend-drill?item_id=${encodeURIComponent(m.item_id)}` +
-      `&backend=${encodeURIComponent(backend)}&k=5`
-    );
-    renderBackendDrill(data);
-  } catch (e) {
-    box.textContent = "";
-    box.append(drillHeader(m.item_id, label, backendClass(backend)));
-    box.append(el("div", { class: "err" }, "drill-in failed: " + e.message));
-  }
-}
-
-function drillHeader(itemId, label, cls) {
-  return el("div", { class: "drill-head" }, [
-    el("div", {}, [
-      el("div", { class: "label" }, "backend drill-in"),
-      el("div", {}, [
-        el("span", { class: "id" }, itemId),
-        " → ",
-        el("span", { class: `backend-name ${cls}` }, label),
-      ]),
-    ]),
-    el("button", {
-      class: "drill-close",
-      type: "button",
-      "aria-label": "close backend drill-in",
-      on: { click: () => $("#browse-drill").classList.add("hidden") },
-    }, "×"),
+// ---- backend artifact popover (badge click) -------------------------------
+// Clicking a memory's backend badge shows that backend's STORED ARTIFACT (not a
+// retrieval): markdown → the real .md file + OKF frontmatter; vectors → the stored
+// record + embedding meta; graph → the node + its edges. Each has a Copy-path button.
+// Reuses the shared #modal (the same overlay as the row-detail view).
+function artifactTitle(backend, itemId) {
+  return el("h2", {}, [
+    el("span", { class: `backend-name ${backendClass(backend)}` }, BACKEND_LABEL[backend] || backend),
+    " · ",
+    el("span", { class: "id" }, itemId),
   ]);
 }
 
-function renderBackendDrill(data) {
-  const box = $("#browse-drill");
-  const cls = backendClass(data.backend);
-  box.textContent = "";
-  box.append(drillHeader(data.item_id, BACKEND_LABEL[data.backend] || data.backend, cls));
-  box.append(el("div", { class: "drill-query" }, [
-    el("span", { class: "label" }, "probe query"),
-    el("span", {}, data.query),
+async function openArtifactPopover(m, backend) {
+  const body = $("#modal-body");
+  body.textContent = "";
+  body.append(artifactTitle(backend, m.item_id));
+  body.append(el("div", { class: "hint" }, "loading…"));
+  $("#modal").classList.remove("hidden");
+  let data;
+  try {
+    data = await getJSON(
+      `/api/backend-artifact?item_id=${encodeURIComponent(m.item_id)}` +
+      `&backend=${encodeURIComponent(backend)}`
+    );
+  } catch (e) {
+    body.append(el("div", { class: "err" }, "artifact load failed: " + e.message));
+    return;
+  }
+  renderArtifact(body, data);
+}
+
+function renderArtifact(body, data) {
+  body.textContent = "";
+  body.append(artifactTitle(data.backend, data.item_id));
+  body.append(copyPathRow(data.copy_path, data.exists));
+  if (data.kind === "markdown") renderMdArtifact(body, data);
+  else if (data.kind === "vector") renderVecArtifact(body, data);
+  else renderGraphArtifact(body, data);
+}
+
+function copyPathRow(path, exists) {
+  const row = el("div", { class: "artifact-path" }, [
+    el("span", { class: "label" }, "path"),
+    el("code", { class: "path" }, path || "—"),
+    el("button", {
+      type: "button", class: "copy-path", title: "copy path to clipboard",
+      on: { click: () => copyToClipboard(path) },
+    }, "Copy path"),
+  ]);
+  if (exists === false) row.append(el("span", { class: "pill warn" }, "not on disk"));
+  return row;
+}
+
+async function copyToClipboard(text) {
+  if (!text) { toast("no path to copy", true); return; }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = el("textarea", {}, text);
+      ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.append(ta); ta.select();
+      document.execCommand("copy"); ta.remove();
+    }
+    toast("path copied to clipboard");
+  } catch (e) {
+    toast("copy failed: " + e.message, true);
+  }
+}
+
+function kvBlock(pairs) {
+  const kv = el("div", { class: "kv" });
+  for (const [k, v] of pairs) { kv.append(el("span", { class: "k" }, k)); kv.append(el("span", {}, v)); }
+  return kv;
+}
+
+function renderMdArtifact(body, data) {
+  if (data.error) { body.append(el("div", { class: "err" }, data.error)); return; }
+  if (!data.exists) {
+    body.append(el("div", { class: "hint", style: "margin-top:12px" }, data.note || "no file on disk"));
+    return;
+  }
+  const fm = data.frontmatter || {};
+  const keys = Object.keys(fm);
+  body.append(el("div", { class: "label", style: "margin-top:12px" }, "OKF frontmatter"));
+  body.append(keys.length
+    ? kvBlock(keys.map((k) => [k, typeof fm[k] === "string" ? fm[k] : JSON.stringify(fm[k])]))
+    : el("div", { class: "hint" }, "(none)"));
+  body.append(el("div", { class: "label", style: "margin-top:12px" }, "raw .md file"));
+  body.append(el("pre", { class: "artifact-file" }, data.text || ""));
+}
+
+function renderVecArtifact(body, data) {
+  const emb = data.embedding || {};
+  body.append(el("div", { class: "label", style: "margin-top:12px" }, "embedding"));
+  body.append(kvBlock([
+    ["dim", emb.dim != null ? String(emb.dim) : "—"],
+    ["model", emb.model || "—"],
+    ["index", emb.index || "—"],
   ]));
-  box.append(el("div", { class: "columns drill-columns" }, [
-    probeColumn(cls, BACKEND_LABEL[data.backend] || data.backend, data.hits, data.score_semantics, data.error),
-  ]));
+  if (emb.note) body.append(el("div", { class: "note" }, emb.note));
+  if (data.item) appendStoredItem(body, data.item);
+  else body.append(el("div", { class: "hint", style: "margin-top:12px" }, "no record stored in this backend"));
+}
+
+function renderGraphArtifact(body, data) {
+  if (data.edges && data.edges.length) {
+    const edges = el("div", { class: "edges" }, [el("div", { class: "label", style: "margin-top:12px" }, "graph edges")]);
+    for (const e of data.edges) {
+      edges.append(el("div", { class: "edge" }, [
+        el("span", { class: "rel" }, e.relation), " → ",
+        el("span", { class: "tgt" }, e.target),
+        e.anchor ? `  (anchor: "${e.anchor}")` : "",
+      ]));
+    }
+    body.append(edges);
+  } else {
+    body.append(el("div", { class: "hint", style: "margin-top:12px" }, "no graph edges for this memory"));
+  }
+  if (data.node) appendStoredItem(body, data.node);
+  else body.append(el("div", { class: "hint" }, "no node stored in this backend"));
+}
+
+function appendStoredItem(body, item) {
+  const pairs = [["tags", (item.tags || []).join(", ") || "—"]];
+  if (item.timestamp != null) pairs.push(["timestamp", `${fmtTs(item.timestamp)} (${item.timestamp})`]);
+  if (item.version != null) pairs.push(["version", String(item.version)]);
+  body.append(el("div", { class: "label", style: "margin-top:12px" }, "stored record"));
+  body.append(kvBlock(pairs));
+  body.append(el("div", { class: "label", style: "margin-top:8px" }, "content"));
+  body.append(el("pre", {}, item.content || ""));
+  body.append(el("div", { class: "label", style: "margin-top:8px" }, "metadata"));
+  body.append(el("pre", {}, JSON.stringify(item.metadata || {}, null, 2)));
 }
 $("#browse-filter").addEventListener("input", renderBrowse);
 $$(".grid th[data-sort]").forEach((th) =>
@@ -257,6 +340,7 @@ function openDetail(m) {
 }
 $("#modal-close").addEventListener("click", () => $("#modal").classList.add("hidden"));
 $("#modal").addEventListener("click", (e) => { if (e.target.id === "modal") $("#modal").classList.add("hidden"); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("#modal").classList.add("hidden"); });
 
 // ---- Routing-effectiveness ------------------------------------------------
 function renderRouting() {

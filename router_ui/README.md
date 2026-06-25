@@ -1,8 +1,11 @@
 # Router Memory Inspector
 
 A local web UI to inspect the memories the **cookbook-memory plugin** saves during a benchmark run,
-and evaluate how well the **router** routes them. Reads through `memeval`'s public store/router APIs
-only — it never parses `.md`/`.db` files. Additive, read-only, zero extra dependencies.
+and evaluate how well the **router** routes them. Reads primarily through `memeval`'s public
+store/router APIs; the one deliberate exception is the backend-artifact popover, which reads a
+memory's actual `.md` file to show its OKF frontmatter + body. It never writes, and never parses
+`.db` files (vector/graph artifacts are surfaced via the store APIs plus their on-disk paths).
+Additive, read-only, zero extra dependencies.
 
 ## Run
 
@@ -18,8 +21,12 @@ Flags: `--store DIR`, `--port N` (8765), `--profile speed|fusion|accuracy|auto`,
 
 ## Views
 
-- **Browse** — every memory, per-backend membership chips that drill into that backend's
-  raw retrieval for the memory, metadata, graph edges (rel → target).
+- **Browse** — every memory, with per-backend membership chips. **Click a chip** to open a
+  popover of that backend's **stored artifact**: markdown shows the real `.md` file (OKF
+  frontmatter + body), vectors shows the stored record + embedding metadata (dim/model/index),
+  graph shows the node + its typed edges — each with a **Copy path** button (the per-memory
+  `.md` file for markdown; the shared `memory.db` / `graph.db` for vectors / graph). Click a
+  **row** for the full memory detail (content, metadata, edges).
 - **Routing-effectiveness** — actual on-disk landing vs the router's `classify` + `write_plan`, with
   ⚠ flags for **write-plan-vs-actual asymmetry** and **low classifier margin** (the real mis-route
   signals under the default `base_all` policy, where every memory fans out to all three backends).
@@ -32,5 +39,5 @@ Flags: `--store DIR`, `--port N` (8765), `--profile speed|fusion|accuracy|auto`,
 Imports the installed `memeval` package from the `agent-memory-harness` venv (`make setup` builds it);
 `run.sh` sets `PYTHONPATH` to this workspace and `cd`s to the harness so `results/` discovery works.
 
-Built from two architect designs + an implementer (17 tests, real-substrate validated); migrated here
+Built from two architect designs + an implementer (22 tests, real-substrate validated); migrated here
 from the harness build and re-verified (tests + live server smoke).

@@ -12,7 +12,7 @@ Routes
 ``GET  /api/summary``              store path, profile, counts, fan-out histogram, flags
 ``GET  /api/memories``             the de-duped memory list (browse + routing)
 ``GET  /api/probe?q=...&k=5``      routing decision + per-backend + engine results
-``GET  /api/backend-drill``        one Browse memory probed against one backend
+``GET  /api/backend-artifact``     one Browse memory's stored artifact in one backend (+ copy path)
 ``POST /api/capture``             append a captured eval case to captured_cases.jsonl
 """
 
@@ -57,13 +57,12 @@ class InspectorHandler(BaseHTTPRequestHandler):
             query = (qs.get("q") or [""])[0]
             k = _int((qs.get("k") or ["5"])[0], default=5)
             return self._json(self.substrate.probe(query, k=k))
-        if path == "/api/backend-drill":
+        if path == "/api/backend-artifact":
             qs = parse_qs(parsed.query)
             item_id = (qs.get("item_id") or [""])[0]
             backend = (qs.get("backend") or [""])[0]
-            k = _int((qs.get("k") or ["5"])[0], default=5)
             try:
-                return self._json(self.substrate.probe_backend_for_memory(item_id, backend, k=k))
+                return self._json(self.substrate.artifact_view(item_id, backend))
             except ValueError as exc:
                 return self._json({"error": str(exc)}, code=400)
             except KeyError:

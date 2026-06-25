@@ -14,6 +14,7 @@ Launch the inspector UI itself with `./router_ui/run.sh` (router_ui/README.md "R
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -144,35 +145,76 @@ def test_probe_shape(seeded):
     assert "jwt-signature" in md_ids
 
 
-def test_backend_drill_reuses_probe_backend_column(seeded):
+def test_artifact_view_markdown_reads_real_file(seeded):
     store, _ = seeded
     sub = open_substrate(str(store), "fusion")
-    res = sub.probe_backend_for_memory("jwt-signature", "markdown", k=3)
-    full = sub.probe(res["query"], k=3)
-
+    res = sub.artifact_view("retry-max-attempts", "markdown")
+    assert res["kind"] == "markdown"
     assert res["backend"] == "markdown"
-    assert res["query_source"] == "content"
-    assert res["hits"] == full["per_backend"]["markdown"]
-    assert res["score_semantics"] == full["score_semantics"]["markdown"]
-    assert "jwt-signature" in [h["item_id"] for h in res["hits"]]
-    assert "per_backend" not in res
+    assert res["backend_present"] is True
+    assert res["exists"] is True
+    # md copy_path is the PER-MEMORY .md file (not a shared db), and it really exists
+    assert res["copy_path"].endswith("retry-max-attempts.md")
+    assert Path(res["copy_path"]).is_file()
+    # the actual file is shown: parsed OKF frontmatter + raw text + body
+    assert isinstance(res["frontmatter"], dict) and res["frontmatter"]
+    assert "retry" in (res["text"] or "").lower()
+    assert "body" in res
 
 
-def test_backend_drill_endpoint_returns_one_backend(seeded):
+def test_artifact_view_vector_returns_db_path_and_embedding(seeded):
     store, _ = seeded
     sub = open_substrate(str(store), "fusion")
-    expected = sub.probe_backend_for_memory("jwt-signature", "vectors", k=2)
+    res = sub.artifact_view("retry-max-attempts", "vectors")
+    assert res["kind"] == "vector"
+    # vec copy_path is the SHARED memory.db (vectors are rows, not per-memory files)
+    assert res["copy_path"].endswith("memory.db")
+    assert Path(res["copy_path"]).is_file()
+    assert res["embedding"]["dim"]            # an int dim from the embedder
+    assert res["embedding"]["index"]          # e.g. "brute-force exact"
+    assert res["item"]["content"]             # the stored record
 
-    handler = _CaptureHandler("/api/backend-drill?item_id=jwt-signature&backend=vectors&k=2", sub)
+
+def test_artifact_view_graph_returns_db_path_node_and_edges(seeded):
+    store, _ = seeded
+    sub = open_substrate(str(store), "fusion")
+    res = sub.artifact_view("payment-depends-retry", "graph")  # has an okf_links edge
+    assert res["kind"] == "graph"
+    assert res["copy_path"].endswith("graph.db")
+    assert Path(res["copy_path"]).is_file()
+    assert isinstance(res["edges"], list) and res["edges"]
+    assert res["edges"][0]["target"] == "retry-queue"
+    assert res["node"]["content"]
+
+
+def test_artifact_view_rejects_unknown_backend_and_missing_item(seeded):
+    store, _ = seeded
+    sub = open_substrate(str(store), "fusion")
+    with pytest.raises(ValueError):
+        sub.artifact_view("retry-max-attempts", "nope")
+    with pytest.raises(KeyError):
+        sub.artifact_view("does-not-exist", "markdown")
+
+
+def test_backend_artifact_endpoint(seeded):
+    store, _ = seeded
+    sub = open_substrate(str(store), "fusion")
+    handler = _CaptureHandler("/api/backend-artifact?item_id=retry-max-attempts&backend=markdown", sub)
     handler.do_GET()
-    data = handler.payload
-
     assert handler.code == 200
-    assert data["item_id"] == "jwt-signature"
-    assert data["backend"] == "vectors"
-    assert data["hits"] == expected["hits"]
-    assert data["score_semantics"] == expected["score_semantics"]
-    assert "per_backend" not in data
+    data = handler.payload
+    assert data["item_id"] == "retry-max-attempts"
+    assert data["backend"] == "markdown"
+    assert data["kind"] == "markdown"
+    assert data["copy_path"].endswith(".md")
+
+    # unknown backend -> 400, missing item -> 404
+    bad = _CaptureHandler("/api/backend-artifact?item_id=retry-max-attempts&backend=nope", sub)
+    bad.do_GET()
+    assert bad.code == 400
+    missing = _CaptureHandler("/api/backend-artifact?item_id=nope&backend=markdown", sub)
+    missing.do_GET()
+    assert missing.code == 404
 
 
 def test_empty_substrate_creates_no_files(tmp_path):

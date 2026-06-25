@@ -56,8 +56,18 @@ function renderSummary(s) {
   const counts = BK.map(([n]) => `${SHORT[n]} ${s.counts[n] ?? 0}`).join(" · ");
   const fan = ["1", "2", "3"].map((k) => `${k}→${s.fanout_histogram[k] || 0}`).join(" ");
   const status = BK.map(([n]) => `${SHORT[n]}:${s.backend_status[n]}`).join(" ");
+  const storeInput = el("input", {
+    class: "store-input", type: "text", value: s.store_path, spellcheck: "false",
+    title: "change the substrate directory (a .../_memory), then Load or Enter",
+  });
+  storeInput.addEventListener("keydown", (e) => { if (e.key === "Enter") reopenStore(storeInput.value); });
+  const storePill = el("span", { class: "pill store-pill" }, [
+    el("b", {}, "store "), storeInput,
+    el("button", { class: "store-load", type: "button",
+      on: { click: () => reopenStore(storeInput.value) } }, "Load"),
+  ]);
   const bits = [
-    el("span", { class: "pill" }, [el("b", {}, "store "), s.store_path]),
+    storePill,
     el("span", { class: "pill" }, [el("b", {}, "profile "), `${s.profile} (${s.profile_source})`]),
     el("span", { class: "pill" }, [el("b", {}, "backends "), status]),
     el("span", { class: "pill" }, [el("b", {}, "counts "), counts]),
@@ -72,6 +82,34 @@ function renderSummary(s) {
   const box = $("#summary");
   box.textContent = "";
   bits.forEach((b) => box.append(b));
+}
+
+// Change the active substrate directory live (no inspector restart). POSTs the new dir,
+// then refreshes summary + memories + the Browse/Routing views from the new store.
+async function reopenStore(store) {
+  const dir = (store || "").trim();
+  if (!dir) { toast("enter a store directory", true); return; }
+  let summary;
+  try {
+    summary = await postJSON("/api/reopen", { store: dir });
+  } catch (e) {
+    toast("could not open store: " + e.message, true);
+    return;
+  }
+  SUMMARY = summary;
+  renderSummary(SUMMARY);
+  try {
+    MEMORIES = (await getJSON("/api/memories")).memories;
+  } catch (e) {
+    MEMORIES = [];
+    toast("opened store but failed to list memories: " + e.message, true);
+  }
+  renderBrowse();
+  renderRouting();
+  $("#modal").classList.add("hidden");      // close any popover from the previous store
+  $("#probe-decision").textContent = "";    // clear stale probe results
+  $("#probe-columns").textContent = "";
+  toast("loaded " + SUMMARY.store_path);
 }
 
 // ---- score bars (shared by routing + probe decision) ----------------------

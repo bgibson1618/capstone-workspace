@@ -3,8 +3,9 @@
 A local web UI to inspect the memories the **cookbook-memory plugin** saves during a benchmark run,
 and evaluate how well the **router** routes them. Reads primarily through `memeval`'s public
 store/router APIs; the one deliberate exception is the backend-artifact popover, which reads a
-memory's actual `.md` file to show its OKF frontmatter + body. It never writes, and never parses
-`.db` files (vector/graph artifacts are surfaced via the store APIs plus their on-disk paths).
+memory's actual `.md` file to show its OKF frontmatter + body. It never writes to the substrate
+(the eval-capture feature appends to its own `captured_cases.jsonl`), and never parses `.db` files
+(vector/graph artifacts are surfaced via the store APIs plus their on-disk paths).
 Additive, read-only, zero extra dependencies.
 
 ## Run
@@ -18,6 +19,10 @@ Additive, read-only, zero extra dependencies.
 Then open the printed `http://127.0.0.1:8765`.
 Flags: `--store DIR`, `--port N` (8765), `--profile speed|fusion|accuracy|auto`, `--seed [--force]`,
 `--open`, `--margin-threshold F`.
+
+The **store** field in the header is editable: type another `.../_memory` (or a run dir with a
+nested `.cookbook-memory`) and press **Load** (or Enter) to switch substrates **live — no restart**
+(`POST /api/reopen` reopens the substrate server-side and refreshes every view).
 
 ## Views
 

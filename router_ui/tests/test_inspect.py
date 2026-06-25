@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 from router_ui import fixtures
-from router_ui.server import InspectorHandler
+from router_ui.server import InspectorHandler, _State
 from router_ui.substrate import open_substrate, _EmptyStore
 
 
@@ -33,7 +33,7 @@ def seeded(tmp_path):
 class _CaptureHandler(InspectorHandler):
     def __init__(self, path, substrate):
         self.path = path
-        self.substrate = substrate
+        self.state = _State(substrate)   # the swappable active-substrate holder
         self.payload = None
         self.code = None
 
@@ -215,6 +215,37 @@ def test_backend_artifact_endpoint(seeded):
     missing = _CaptureHandler("/api/backend-artifact?item_id=nope&backend=markdown", sub)
     missing.do_GET()
     assert missing.code == 404
+
+
+def test_reopen_swaps_active_store(seeded, tmp_path):
+    storeA, _ = seeded
+    storeB = tmp_path / "B" / "_memory"
+    storeB.parent.mkdir(parents=True, exist_ok=True)
+    fixtures.seed(str(storeB))
+
+    h = _CaptureHandler("/api/summary", open_substrate(str(storeA), "fusion"))
+    h.do_GET()
+    assert h.payload["store_path"] == str(storeA)        # initially store A
+
+    h._reopen({"store": str(storeB)})                    # live swap to store B
+    assert h.code == 200
+    assert h.payload["store_path"] == str(storeB)        # reopen returns B's summary
+
+    h.path = "/api/summary"
+    h.do_GET()
+    assert h.payload["store_path"] == str(storeB)        # later requests see B (swap persisted)
+
+
+def test_reopen_validates_input(seeded, tmp_path):
+    store, _ = seeded
+    h = _CaptureHandler("/api/reopen", open_substrate(str(store), "fusion"))
+
+    h._reopen({})                                        # missing store
+    assert h.code == 400
+    h._reopen({"store": str(tmp_path / "does-not-exist")})  # nonexistent dir
+    assert h.code == 400
+    # a failed reopen leaves the original substrate active
+    assert h.state.substrate.store_dir == str(store)
 
 
 def test_empty_substrate_creates_no_files(tmp_path):

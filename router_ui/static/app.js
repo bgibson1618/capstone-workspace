@@ -18,6 +18,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const fmtTs = (t) => (t ? new Date(t * 1000).toISOString().slice(0, 10) : "—");
 const BK = [["markdown", "md"], ["vectors", "vec"], ["graph", "graph"]];
 const SHORT = { markdown: "md", vectors: "vec", graph: "graph" };
+const BACKEND_LABEL = { markdown: "markdown", vectors: "sqlite-vector", graph: "graph" };
 
 async function getJSON(url) {
   const r = await fetch(url);
@@ -88,13 +89,30 @@ function scoreBars(scores, choice) {
   return el("div", { class: "bars" }, bars);
 }
 
-function backendChips(membership) {
+function backendClass(name) {
+  const found = BK.find(([n]) => n === name);
+  return found ? found[1] : "";
+}
+
+function backendChips(membership, memory = null) {
   return el(
     "span",
     { class: "chips" },
-    BK.map(([n, cls]) =>
-      el("span", { class: `chip ${cls} ` + (membership[n] ? "on" : "off") }, SHORT[n])
-    )
+    BK.map(([n, cls]) => {
+      const klass = `chip ${cls} ` + (membership[n] ? "on" : "off");
+      if (!memory) return el("span", { class: klass }, SHORT[n]);
+      return el(
+        "button",
+        {
+          type: "button",
+          class: `${klass} drill-chip`,
+          title: `${BACKEND_LABEL[n]} raw retrieval for ${memory.item_id}`,
+          "aria-label": `${BACKEND_LABEL[n]} raw retrieval for ${memory.item_id}`,
+          on: { click: (e) => { e.stopPropagation(); openBackendDrill(memory, n); } },
+        },
+        SHORT[n]
+      );
+    })
   );
 }
 
@@ -127,10 +145,63 @@ function renderBrowse() {
       el("td", { class: "dim" }, (m.tags || []).map((t) => el("span", { class: "tag" }, t))),
       el("td", { class: "dim" }, fmtTs(m.timestamp)),
       el("td", { class: "dim" }, String(m.version)),
-      el("td", {}, backendChips(m.membership)),
+      el("td", {}, backendChips(m.membership, m)),
     ]);
     tbody.append(tr);
   }
+}
+
+async function openBackendDrill(m, backend) {
+  const box = $("#browse-drill");
+  const label = BACKEND_LABEL[backend] || backend;
+  box.classList.remove("hidden");
+  box.textContent = "";
+  box.append(drillHeader(m.item_id, label, backendClass(backend)));
+  box.append(el("div", { class: "hint" }, "loading…"));
+  try {
+    const data = await getJSON(
+      `/api/backend-drill?item_id=${encodeURIComponent(m.item_id)}` +
+      `&backend=${encodeURIComponent(backend)}&k=5`
+    );
+    renderBackendDrill(data);
+  } catch (e) {
+    box.textContent = "";
+    box.append(drillHeader(m.item_id, label, backendClass(backend)));
+    box.append(el("div", { class: "err" }, "drill-in failed: " + e.message));
+  }
+}
+
+function drillHeader(itemId, label, cls) {
+  return el("div", { class: "drill-head" }, [
+    el("div", {}, [
+      el("div", { class: "label" }, "backend drill-in"),
+      el("div", {}, [
+        el("span", { class: "id" }, itemId),
+        " → ",
+        el("span", { class: `backend-name ${cls}` }, label),
+      ]),
+    ]),
+    el("button", {
+      class: "drill-close",
+      type: "button",
+      "aria-label": "close backend drill-in",
+      on: { click: () => $("#browse-drill").classList.add("hidden") },
+    }, "×"),
+  ]);
+}
+
+function renderBackendDrill(data) {
+  const box = $("#browse-drill");
+  const cls = backendClass(data.backend);
+  box.textContent = "";
+  box.append(drillHeader(data.item_id, BACKEND_LABEL[data.backend] || data.backend, cls));
+  box.append(el("div", { class: "drill-query" }, [
+    el("span", { class: "label" }, "probe query"),
+    el("span", {}, data.query),
+  ]));
+  box.append(el("div", { class: "columns drill-columns" }, [
+    probeColumn(cls, BACKEND_LABEL[data.backend] || data.backend, data.hits, data.score_semantics, data.error),
+  ]));
 }
 $("#browse-filter").addEventListener("input", renderBrowse);
 $$(".grid th[data-sort]").forEach((th) =>

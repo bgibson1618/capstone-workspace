@@ -12,6 +12,7 @@ Routes
 ``GET  /api/summary``              store path, profile, counts, fan-out histogram, flags
 ``GET  /api/memories``             the de-duped memory list (browse + routing)
 ``GET  /api/probe?q=...&k=5``      routing decision + per-backend + engine results
+``GET  /api/backend-drill``        one Browse memory probed against one backend
 ``POST /api/capture``             append a captured eval case to captured_cases.jsonl
 """
 
@@ -56,6 +57,17 @@ class InspectorHandler(BaseHTTPRequestHandler):
             query = (qs.get("q") or [""])[0]
             k = _int((qs.get("k") or ["5"])[0], default=5)
             return self._json(self.substrate.probe(query, k=k))
+        if path == "/api/backend-drill":
+            qs = parse_qs(parsed.query)
+            item_id = (qs.get("item_id") or [""])[0]
+            backend = (qs.get("backend") or [""])[0]
+            k = _int((qs.get("k") or ["5"])[0], default=5)
+            try:
+                return self._json(self.substrate.probe_backend_for_memory(item_id, backend, k=k))
+            except ValueError as exc:
+                return self._json({"error": str(exc)}, code=400)
+            except KeyError:
+                return self._json({"error": f"memory not found: {item_id}"}, code=404)
         return self._json({"error": "not found", "path": path}, code=404)
 
     # -- POST --------------------------------------------------------------

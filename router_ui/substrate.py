@@ -351,6 +351,42 @@ class Substrate:
             "score_semantics": dict(SCORE_SEMANTICS),
         }
 
+    def probe_backend_for_memory(self, item_id: str, backend: str, k: int = 5) -> dict:
+        """Run the existing probe path for one memory, returning one backend column.
+
+        The Browse drill-in intentionally reuses :meth:`probe` so raw retrieval, score
+        normalization, degradation errors, and score-semantics labels stay identical to
+        the Query Probe view. The query is the canonical memory content, falling back to
+        the id for an empty memory.
+        """
+        if not item_id:
+            raise ValueError("item_id is required")
+        if backend not in READ_ORDER:
+            raise ValueError(f"unknown backend {backend!r}; choose {'|'.join(READ_ORDER)}")
+
+        canon, _ = self._canonical()
+        item = canon.get(item_id)
+        if item is None:
+            raise KeyError(item_id)
+
+        query = item.content or item.item_id
+        probed = self.probe(query, k=k)
+        return {
+            "item_id": item_id,
+            "backend": backend,
+            "query": query,
+            "query_source": "content" if item.content else "item_id",
+            "k": probed["k"],
+            "memory": {
+                "snippet": _snippet(item.content),
+                "tags": list(item.tags),
+            },
+            "decision": probed["decision"],
+            "hits": probed["per_backend"][backend],
+            "error": probed["errors"].get(backend),
+            "score_semantics": probed["score_semantics"][backend],
+        }
+
     # -- eval-case capture -------------------------------------------------
     def capture(self, payload: dict) -> dict:
         """Append a captured eval case to ``captured_cases.jsonl`` next to this module.

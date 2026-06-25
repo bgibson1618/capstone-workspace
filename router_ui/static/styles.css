@@ -79,6 +79,12 @@ em { color: var(--ink); font-style: normal; font-weight: 600; }
   display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 700;
   border: 1px solid var(--line); color: var(--muted); background: transparent;
 }
+button.chip { cursor: pointer; font-family: inherit; line-height: 1.5; }
+button.chip:hover, button.chip:focus-visible {
+  filter: brightness(1.08);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--accent);
+}
 .chip.on.md { color: #06223f; background: var(--md); border-color: var(--md); }
 .chip.on.vec { color: #06223f; background: var(--vec); border-color: var(--vec); }
 .chip.on.graph { color: #06223f; background: var(--graph); border-color: var(--graph); }
@@ -86,6 +92,36 @@ em { color: var(--ink); font-style: normal; font-weight: 600; }
 
 .tag { display: inline-block; background: var(--panel-2); border: 1px solid var(--line);
   border-radius: 4px; padding: 0 6px; margin: 0 3px 3px 0; font-size: 11px; color: var(--muted); }
+
+/* Browse backend drill-in */
+.drill {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; margin-bottom: 12px;
+}
+.drill.hidden { display: none; }
+.drill-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+  margin-bottom: 8px;
+}
+.drill-head .label, .drill-query .label {
+  color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  display: block; margin-bottom: 2px;
+}
+.drill-head .id { color: var(--accent); font-weight: 700; }
+.backend-name.md { color: var(--md); }
+.backend-name.vec { color: var(--vec); }
+.backend-name.graph { color: var(--graph); }
+.drill-close {
+  background: none; border: none; color: var(--muted); cursor: pointer; font: inherit;
+  font-size: 20px; line-height: 1; padding: 0 3px;
+}
+.drill-close:hover, .drill-close:focus-visible { color: var(--ink); outline: none; }
+.drill-query {
+  color: var(--ink); font-size: 12px; margin-bottom: 10px; max-width: 900px;
+  overflow-wrap: anywhere;
+}
+.drill .err { color: var(--flag); font-size: 12px; }
+.columns.drill-columns { grid-template-columns: minmax(0, 760px); }
 
 /* Routing cards */
 .cards { display: flex; flex-direction: column; gap: 10px; }

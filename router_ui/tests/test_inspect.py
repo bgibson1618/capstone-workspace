@@ -18,6 +18,7 @@ import json
 import pytest
 
 from router_ui import fixtures
+from router_ui.server import InspectorHandler
 from router_ui.substrate import open_substrate, _EmptyStore
 
 
@@ -26,6 +27,18 @@ def seeded(tmp_path):
     store = tmp_path / "_memory"
     manifest = fixtures.seed(str(store))
     return store, manifest
+
+
+class _CaptureHandler(InspectorHandler):
+    def __init__(self, path, substrate):
+        self.path = path
+        self.substrate = substrate
+        self.payload = None
+        self.code = None
+
+    def _json(self, obj, code=200):
+        self.payload = obj
+        self.code = code
 
 
 def test_seed_manifest(seeded):
@@ -129,6 +142,37 @@ def test_probe_shape(seeded):
     assert res["decision"]["choice"] == "markdown"
     md_ids = [h["item_id"] for h in res["per_backend"]["markdown"]]
     assert "jwt-signature" in md_ids
+
+
+def test_backend_drill_reuses_probe_backend_column(seeded):
+    store, _ = seeded
+    sub = open_substrate(str(store), "fusion")
+    res = sub.probe_backend_for_memory("jwt-signature", "markdown", k=3)
+    full = sub.probe(res["query"], k=3)
+
+    assert res["backend"] == "markdown"
+    assert res["query_source"] == "content"
+    assert res["hits"] == full["per_backend"]["markdown"]
+    assert res["score_semantics"] == full["score_semantics"]["markdown"]
+    assert "jwt-signature" in [h["item_id"] for h in res["hits"]]
+    assert "per_backend" not in res
+
+
+def test_backend_drill_endpoint_returns_one_backend(seeded):
+    store, _ = seeded
+    sub = open_substrate(str(store), "fusion")
+    expected = sub.probe_backend_for_memory("jwt-signature", "vectors", k=2)
+
+    handler = _CaptureHandler("/api/backend-drill?item_id=jwt-signature&backend=vectors&k=2", sub)
+    handler.do_GET()
+    data = handler.payload
+
+    assert handler.code == 200
+    assert data["item_id"] == "jwt-signature"
+    assert data["backend"] == "vectors"
+    assert data["hits"] == expected["hits"]
+    assert data["score_semantics"] == expected["score_semantics"]
+    assert "per_backend" not in data
 
 
 def test_empty_substrate_creates_no_files(tmp_path):

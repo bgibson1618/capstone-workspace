@@ -37,7 +37,14 @@ We build out the eval set as we go — fast offline "unit evals" (the routing ba
 - **#167 stays on `main`** (repo-scoped to sphinx, zero blast radius on xarray/others) — no revert.
 - **Console:** cockpit live this session at http://127.0.0.1:45445/ (re-`agent-roster console --ensure --workspace <ws>` after a boundary; memory `reensure-console-after-boundary`).
 
-### Landed today (Brent's slice) — all MERGED to shared `main`
+### Shipped 2026-06-25 PM (after the overnight)
+- **sphinx 3.x grader fix — PR #167 MERGED** (`6a0b0b4`): `uv venv --seed` + era-pins (`setuptools<60`/`docutils<0.16`) gated to `_CONDA_BASE_REPOS={sphinx}`; zero non-sphinx blast radius. (D048)
+- **OKF frontmatter serializer — PR #171 MERGED** (`e2435ec`): type=content not provenance, first-sentence description, key-aware `x_metadata_json` dedup; `x_item_id` kept. Rich content (title/type/desc) = cross-team extractor follow-up (Scott + Keith). (D049/D050, `OKF_FRONTMATTER_TODO.md`)
+- **Track D FTS5 lexical backend — PR #174 OPEN** (`stores/track-d-fts5`): stdlib SQLite-FTS5 `Fts5Store`; **beats markdown lexical** (recall@10 0.842 vs 0.825, ~5× faster writes), default-eligible; production seam DEFERRED (D044). Cross-vendor gated PASS. (D051)
+- **Worktrees:** main = the running **xarray pipeline** (`eval/pydata-xarray-pipeline`); `amh-okf-frontmatter` (OKF, merged — removable); `amh-track-d-fts5` (FTS5 PR #174). Backend/tooling dev runs in worktrees so the live pipeline tree is never edited mid-run.
+- **Benchmark menu now:** ~~Track D FTS5~~ ✅ PR #174 · captained Voyage-rerank-on-MiniLM-fusion (D046 next) · Track B FalkorDB (D044) · Track E learned router · 10k throughput · bge-m3.
+
+### Landed 2026-06-24 (Brent's slice) — all MERGED to shared `main`
 - **Track C** (local MiniLM + sqlite-vec ANN) — **PR #151 MERGED**.
 - **router_ui inspector → upstreamed to the shared repo** — **PR #156 MERGED** (`agent-memory-harness/router_ui/`, run `./router_ui/run.sh`); the capstone copy is RETIRED.
 - **`.env.example` Router section** (profile precedence + `MEMEVAL_LOCAL_ANN` + `MEMEVAL_ALLOW_MODEL_DOWNLOAD`) — **PR #155 MERGED** (the teammate MiniLM how-to).

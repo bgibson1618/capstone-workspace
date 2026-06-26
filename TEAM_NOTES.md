@@ -43,3 +43,27 @@ in-memory untyped link graph, with the real/paid path deferred behind injection 
 but the plan doc should say *"v1 stdlib offline shipped; production embeddings / Neo4j deferred
 to the paid path"* so our status is accurate — especially for how we describe the project
 externally.
+
+## 3. Pipeline SUMMARY "Memory health" under-reports `recall_events` (cc @kenhuangus @kmazanec) — 2026-06-26
+
+The `make pipeline` SUMMARY (`.md` + `.json`) carries **two recall counters that disagree** for a
+memory-on stage. On the xarray `plugin-accum` run @ `72d00a7` (banked, PR #196):
+
+- **Stage-level** (the truth): `recall_attempted = 22`, `recall_with_hits = 22`, `memory_reached = 22`,
+  `memory_hit = 22` — memory was recalled AND hit on all 22 tasks.
+- **`memory_health.*` block** (what the SUMMARY "Memory health" TABLE prints): `recall_events = 0`,
+  `recall_with_hits = 0`, `recall_zero_hits = 0`.
+
+So the human-facing scoreboard table shows **memory as completely unused** (`recall events 0`) when the
+stage-level counters prove it was used every task. The contrast is clean: the no-memory `builtin` stage
+has BOTH sets at 0 (correct), so it's specifically the `memory_health` aggregation that's broken for a
+memory-on stage — it isn't reading the same recall events the stage-level counters do (possibly it reads
+the accum store's own event log, which the seeded/copied store path leaves empty, vs the live per-task
+recall instrumentation).
+
+**Impact:** anyone reading the SUMMARY table would conclude "memory did nothing," masking the actual
++1-task lift. **Ask:** point the `memory_health.recall_events`/`recall_with_hits` aggregation at the same
+source as the stage-level `recall_attempted`/`recall_with_hits` (or document which is canonical). This is
+eval-harness / reporting (Ken/Keith's domain), not a stores/router bug — flagging, not acting
+unilaterally. Repro data: `results/vpydata_xarray_sequence-plugin-accum-72d00a7-1/SUMMARY-*.json`
+(`stages[0].recall_attempted` vs `stages[0].memory_health.recall_events`).

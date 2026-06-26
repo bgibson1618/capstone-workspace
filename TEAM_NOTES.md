@@ -44,26 +44,50 @@ but the plan doc should say *"v1 stdlib offline shipped; production embeddings /
 to the paid path"* so our status is accurate — especially for how we describe the project
 externally.
 
-## 3. Pipeline SUMMARY "Memory health" under-reports `recall_events` (cc @kenhuangus @kmazanec) — 2026-06-26
+## 3. Pipeline SUMMARY "Memory health" table: the `recall events`/`hit events` columns under-report on a seeded stage (cc @kenhuangus @kmazanec) — 2026-06-26
 
-The `make pipeline` SUMMARY (`.md` + `.json`) carries **two recall counters that disagree** for a
-memory-on stage. On the xarray `plugin-accum` run @ `72d00a7` (banked, PR #196):
+**Symptom.** The "Memory health" table's `recall events` + `hit events` columns read **0** for the seeded
+`plugin-accum` stage even though memory was recalled on every task. The table has TWO recall sources side
+by side, and they're not the same unit and don't agree:
 
-- **Stage-level** (the truth): `recall_attempted = 22`, `recall_with_hits = 22`, `memory_reached = 22`,
-  `memory_hit = 22` — memory was recalled AND hit on all 22 tasks.
-- **`memory_health.*` block** (what the SUMMARY "Memory health" TABLE prints): `recall_events = 0`,
-  `recall_with_hits = 0`, `recall_zero_hits = 0`.
+| run | `recall tasks` / (hit) — trajectory, PER-TASK | `recall events` / `hit events` — event-log DELTA |
+|---|---|---|
+| `plugin-blank` (non-seeded) | 21 / 14 | 11 / 7 |
+| `plugin-accum` (**seeded**) | 22 / 22 | **0 / 0** |
 
-So the human-facing scoreboard table shows **memory as completely unused** (`recall events 0`) when the
-stage-level counters prove it was used every task. The contrast is clean: the no-memory `builtin` stage
-has BOTH sets at 0 (correct), so it's specifically the `memory_health` aggregation that's broken for a
-memory-on stage — it isn't reading the same recall events the stage-level counters do (possibly it reads
-the accum store's own event log, which the seeded/copied store path leaves empty, vs the live per-task
-recall instrumentation).
+(The no-memory `builtin` stage is 0 on both, correctly.)
 
-**Impact:** anyone reading the SUMMARY table would conclude "memory did nothing," masking the actual
-+1-task lift. **Ask:** point the `memory_health.recall_events`/`recall_with_hits` aggregation at the same
-source as the stage-level `recall_attempted`/`recall_with_hits` (or document which is canonical). This is
-eval-harness / reporting (Ken/Keith's domain), not a stores/router bug — flagging, not acting
-unilaterally. Repro data: `results/vpydata_xarray_sequence-plugin-accum-72d00a7-1/SUMMARY-*.json`
+**Root cause (traced in code).**
+- The **`recall tasks` column** = `stage.recall_attempted` (`eval/memeval/agent.py:417`), a PER-TASK count
+  of trajectories that did a `retrieve` step. **This is the reliable signal** and is correct (22).
+- The **`recall events` / `hit events` columns** = `memory_health.delta.recall_events` /
+  `recall_with_hits` (`pipeline_summary.py:305`), a DELTA of `"recall"` op-records in the run's
+  `_memory/.cookbook-memory/events.jsonl` (`pipeline.py:738-761`, `_store_health`), taken as
+  `after − before` around the stage (`pipeline.py:1331/1336`).
+- On a **seeded** stage, the store is `copytree`'d from the source (`pipeline.py:788 _copy_memory_dataset`),
+  so `events.jsonl` **already contains the seed's 11 `recall` records** (all `ts: 0.0`) at the `before`
+  snapshot. The accum run then appended 260 `note` + 54 `daydream` records but **0 new `recall` records**,
+  so `after.recall_events == before.recall_events == 11` → **delta 0**.
+- Even on the NON-seeded `plugin-blank` the two disagree (11 logged vs 21 tasks recalled) — so the
+  events.jsonl `recall`-op logging is **incomplete** generally, not just on seeded runs; seeding merely
+  drives the delta to 0.
+
+**Two real issues:** (a) the events.jsonl `recall`-op logging doesn't capture all task-time recalls
+(11 logged vs 21 tasks), and (b) the table presents that unreliable delta as a headline column next to the
+correct per-task one — so a seeded run reads as "recall events 0," masking the lift.
+
+**Fix — recommended (worked out):**
+1. **Reporting (low-risk, `eval/memeval/claudecode/pipeline_summary.py:298,304-305`):** make the table's
+   recall columns the authoritative PER-TASK trajectory counters. Concretely: keep `recall tasks`
+   (`recall_attempted`); ADD a `hit tasks` column from `s.get('recall_with_hits')` (already in the stage
+   dict, currently unused in the table); and DROP the `mh.recall_events` / `mh.recall_with_hits` columns
+   from the .md table (leave them in the detailed JSON for observability). This makes the scoreboard
+   consistent across builtin / blank / seeded with no behavior change to the run.
+2. **Root cause (harness/plugin, Keith/Ken):** if `events.jsonl` is meant to be authoritative recall
+   observability, the plugin's recall path should append a `"recall"` op for EVERY task-time recall (it
+   currently logs ~half), and the seed's copied recall records should be excluded from the `before`
+   baseline (or the seed's `ts:0.0` records dropped on copy) so a seeded delta isn't structurally zeroed.
+
+This is eval-harness / reporting (Ken/Keith's domain), not a stores/router bug — flagging with a concrete
+fix, not acting unilaterally. Repro: `results/vpydata_xarray_sequence-{plugin-blank-6a0b0b4-3,plugin-accum-72d00a7-1}/SUMMARY-*.json`
 (`stages[0].recall_attempted` vs `stages[0].memory_health.recall_events`).
